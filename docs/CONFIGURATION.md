@@ -6,6 +6,9 @@ This reference reflects the systems delivered through Phase 3 (SQLite persistenc
 
 The app reads configuration from `.env.local` (or the process environment) using [`dotenv`](https://www.npmjs.com/package/dotenv). Copy `.env.example` when bootstrapping a new environment.
 
+> [!IMPORTANT]
+> Environment variables are validated at server startup using Zod schemas. Invalid configuration will cause the server to fail fast with helpful error messages.
+
 | Name                         | Required | Default                | Purpose                                                                                                                                                                         |
 | ---------------------------- | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GEMINI_API_KEY`             | ➖        | —                      | Consumed by the server-side Gemini client (`server/services/geminiClient.ts`). Needed for `/api/ai/*`; without it the routes return 503 so flip the legacy client flag instead. |
@@ -44,6 +47,10 @@ Ensure the OS user running the dev server has read/write access to `data/`.
 | -------------------- | --------------------------------------------------------------------------------------------------- |
 | `npm run dev`        | Launches the Vite frontend dev server on port 3000.                                                 |
 | `npm run dev:server` | Starts the Express API (`server/index.ts`) with automatic TypeScript transpilation via `tsx watch`. |
+| `npm run dev:all`    | Runs both frontend and server concurrently.                                                         |
+| `npm run build:all`  | Builds both frontend and server for production.                                                     |
+| `npm run build:server` | Compiles TypeScript server to `dist-server/`.                                                     |
+| `npm run db:reset`   | Deletes the database file and re-seeds with sample data.                                            |
 | `npm run migrate`    | Executes pending SQL migrations using the shared `better-sqlite3` connection.                       |
 | `npm run seed`       | Populates the database with a sample project, scenes, and chat to verify persistence wiring.        |
 | `npm run check:db`   | Runs migrations, validates that required tables exist, and checks asset directory write access.     |
@@ -81,6 +88,7 @@ If deploying to another host, repeat these steps with your deployment environmen
 When enabled, the server emits structured JSON logs for all `/api/ai/*` requests. This is disabled by default to keep local development quiet, but should be enabled in staging and production environments for debugging and monitoring.
 
 **Log Format:**
+
 ```json
 {
   "requestId": "uuid-v4",
@@ -94,6 +102,7 @@ When enabled, the server emits structured JSON logs for all `/api/ai/*` requests
 ```
 
 **Error Log Format:**
+
 ```json
 {
   "requestId": "uuid-v4",
@@ -110,6 +119,7 @@ When enabled, the server emits structured JSON logs for all `/api/ai/*` requests
 ```
 
 **Implementation Details:**
+
 - Logs are written to stdout using the `pino` logger
 - Request IDs are generated server-side and returned via `x-request-id` header
 - Prompt hashes are SHA-256 hashes of the prompt text (for privacy)
@@ -118,17 +128,20 @@ When enabled, the server emits structured JSON logs for all `/api/ai/*` requests
 ### Rate Limiting Configuration
 
 **Environment Variables:**
+
 - `AI_RATE_LIMIT_WINDOW_MS` (default: `60000` - 1 minute)
 - `AI_RATE_LIMIT_MAX_REQUESTS` (default: `30`)
 
 The server enforces in-memory rate limiting on all `/api/ai/*` endpoints using a token bucket algorithm. Rate limits are applied per IP address.
 
 **Default Limits:**
+
 - 30 requests per minute per IP address
 - Sliding window (not fixed intervals)
 
 **Rate Limit Response:**
 When rate limit is exceeded, the server returns:
+
 ```json
 {
   "error": "Rate limit exceeded",
@@ -138,12 +151,14 @@ When rate limit is exceeded, the server returns:
 ```
 
 **HTTP Headers:**
+
 - `X-RateLimit-Limit`: Maximum requests allowed in window
 - `X-RateLimit-Remaining`: Requests remaining in current window
 - `X-RateLimit-Reset`: Timestamp when window resets
 - `Retry-After`: Seconds to wait before retrying (on 429 responses)
 
 **Tuning Recommendations:**
+
 - **Development**: Keep defaults or disable rate limiting entirely
 - **Staging**: Use production-like limits for testing
 - **Production**: Adjust based on your Gemini API quota and expected traffic
@@ -153,6 +168,7 @@ When rate limit is exceeded, the server returns:
 Request IDs enable end-to-end tracing of AI requests from the UI through the server to the Gemini API.
 
 **Flow:**
+
 1. **Server generates** a UUID v4 request ID when receiving an AI request
 2. **Server logs** the request ID with telemetry data (if enabled)
 3. **Server returns** the request ID via `x-request-id` response header
@@ -161,6 +177,7 @@ Request IDs enable end-to-end tracing of AI requests from the UI through the ser
 6. **Support uses** the request ID to search server logs
 
 **Example Error Toast:**
+
 ```
 Failed to generate image
 Request ID: 550e8400-e29b-41d4-a716-446655440000
@@ -168,6 +185,7 @@ Request ID: 550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Searching Logs:**
+
 ```bash
 # Find all logs for a specific request
 grep "550e8400-e29b-41d4-a716-446655440000" server.log
@@ -195,6 +213,7 @@ VibeBoard supports all available Veo video generation models:
 | `veo-2.0-generate-001`      | Good    | Moderate | Fixed              | Legacy model, no resolution parameter |
 
 **Usage Example:**
+
 ```bash
 # Use Veo 3.1 (default)
 DEFAULT_VIDEO_MODEL=veo-3.1-generate-001
@@ -204,6 +223,7 @@ DEFAULT_VIDEO_MODEL=veo-3.0-fast-generate-001
 ```
 
 **Important Notes:**
+
 - Veo 2.0 does not support the resolution parameter - it will be automatically omitted
 - Aspect ratio limitations vary by model - check Gemini API documentation
 - Higher quality models have longer generation times and higher costs
@@ -223,12 +243,14 @@ VibeBoard uses different text models for different purposes:
 **Environment Variable:** `ENABLE_STREAMING` (default: `true`)
 
 When enabled, chat responses stream progressively using Server-Sent Events (SSE):
+
 - Real-time text display as the model generates
 - Stop generation button to halt mid-response
 - Improved perceived performance
 - Better user experience for long responses
 
 **Usage Example:**
+
 ```bash
 # Enable streaming (default)
 ENABLE_STREAMING=true
@@ -255,18 +277,21 @@ VibeBoard supports all available Imagen models with Imagen 4.0 as default:
 Thinking mode shows the model's reasoning process before generating responses. This improves output quality for complex tasks but increases cost and latency.
 
 **When to Enable:**
+
 - Complex storyboard concepts requiring deep reasoning
 - Multi-step problem solving
 - Tasks requiring careful consideration
 - Production environments where quality is critical
 
 **When to Disable:**
+
 - Simple chat interactions
 - Development and testing
 - Cost-sensitive environments
 - Speed-critical applications
 
 **Usage Example:**
+
 ```bash
 # Enable thinking mode for production
 ENABLE_THINKING_MODE=true
@@ -276,6 +301,7 @@ ENABLE_THINKING_MODE=false
 ```
 
 **Trade-offs:**
+
 - ✅ Improved quality for complex tasks
 - ✅ Transparency into model reasoning
 - ❌ Increased latency (2-3x longer)
@@ -289,12 +315,14 @@ ENABLE_THINKING_MODE=false
 Context caching stores conversation context to reduce redundant processing and improve performance.
 
 **Benefits:**
+
 - Faster response times for multi-turn conversations
 - Reduced API costs for repeated context
 - Better performance for long conversations
 - Improved user experience
 
 **Usage Example:**
+
 ```bash
 # Enable caching (default)
 ENABLE_CONTEXT_CACHING=true
@@ -304,6 +332,7 @@ ENABLE_CONTEXT_CACHING=false
 ```
 
 **When to Disable:**
+
 - Testing scenarios requiring fresh context
 - Debugging context-related issues
 - Privacy-sensitive applications
@@ -312,6 +341,7 @@ ENABLE_CONTEXT_CACHING=false
 ### File Upload Configuration
 
 **Environment Variables:**
+
 - `MAX_FILE_SIZE_MB` (default: `100`)
 - `FILES_API_ENABLED` (default: `true`)
 
@@ -333,11 +363,13 @@ Base64 Inline              Files API
 ```
 
 **Additional Routing:**
+
 - Video files → Always use Files API
 - Audio files → Always use Files API
 - Multiple large files → Use Files API
 
 **Usage Example:**
+
 ```bash
 # Default configuration
 MAX_FILE_SIZE_MB=100
@@ -351,6 +383,7 @@ FILES_API_ENABLED=false
 ```
 
 **Important Notes:**
+
 - Files larger than `MAX_FILE_SIZE_MB` will be rejected
 - Disabling Files API limits uploads to ~20MB (base64 encoding overhead)
 - Files API is required for video and audio files
@@ -363,16 +396,19 @@ FILES_API_ENABLED=false
 #### Issue: "503 Service Unavailable" on AI endpoints
 
 **Symptoms:**
+
 - All `/api/ai/*` requests return 503
 - Error message: "Gemini API key not configured"
 
 **Solution:**
+
 1. Verify `GEMINI_API_KEY` is set in `.env.local`
 2. Restart the server (`npm run dev:server`)
 3. Check server logs for "Gemini API key not configured" warning
 
 **Alternative:**
 If you don't have a Gemini API key, enable legacy client mode:
+
 ```bash
 VITE_USE_LEGACY_GEMINI=true
 ```
@@ -380,17 +416,20 @@ VITE_USE_LEGACY_GEMINI=true
 #### Issue: Rate limit errors in development
 
 **Symptoms:**
+
 - Frequent 429 responses during testing
 - Error: "Rate limit exceeded"
 
 **Solution:**
 Increase rate limits for development:
+
 ```bash
 AI_RATE_LIMIT_WINDOW_MS=60000
 AI_RATE_LIMIT_MAX_REQUESTS=100
 ```
 
 Or disable rate limiting entirely (not recommended for production):
+
 ```bash
 AI_RATE_LIMIT_MAX_REQUESTS=999999
 ```
@@ -398,10 +437,12 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Missing request IDs in error messages
 
 **Symptoms:**
+
 - Error toasts don't show request IDs
 - Can't correlate UI errors with server logs
 
 **Solution:**
+
 1. Verify server is returning `x-request-id` header
 2. Check browser network tab for the header
 3. Ensure client error handling captures the header
@@ -410,10 +451,12 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: No telemetry logs appearing
 
 **Symptoms:**
+
 - `ENABLE_AI_TELEMETRY=true` but no logs
 - Can't find AI request logs in output
 
 **Solution:**
+
 1. Verify environment variable is set correctly
 2. Restart the server after changing the variable
 3. Check that requests are actually hitting `/api/ai/*` endpoints
@@ -422,10 +465,12 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Database migration failures
 
 **Symptoms:**
+
 - Server fails to start
 - Error: "Migration failed" or "Table already exists"
 
 **Solution:**
+
 1. Check database file permissions: `ls -la data/storyboard.db`
 2. Verify migrations directory exists: `ls server/migrations/`
 3. Try manual migration: `npm run migrate`
@@ -434,10 +479,12 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Asset files not accessible
 
 **Symptoms:**
+
 - Images/videos don't load in UI
 - 404 errors for `/api/assets/files/*`
 
 **Solution:**
+
 1. Verify `DATA_DIR` environment variable is set correctly
 2. Check asset directory exists: `ls -la data/assets/`
 3. Verify file permissions: `ls -la data/assets/<projectId>/`
@@ -446,11 +493,13 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Streaming not working
 
 **Symptoms:**
+
 - Chat responses appear all at once instead of progressively
 - No stop generation button visible
 - SSE connection errors in browser console
 
 **Solution:**
+
 1. Verify `ENABLE_STREAMING=true` in `.env.local`
 2. Check browser supports Server-Sent Events (all modern browsers do)
 3. Verify no proxy or firewall blocking SSE connections
@@ -460,11 +509,13 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Thinking mode not applying
 
 **Symptoms:**
+
 - No reasoning process shown in responses
 - Response quality unchanged after enabling thinking mode
 - No performance impact observed
 
 **Solution:**
+
 1. Verify `ENABLE_THINKING_MODE=true` in `.env.local`
 2. Restart the server after changing the variable
 3. Check that requests include `thinkingMode: true` parameter
@@ -474,11 +525,13 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Wrong video model being used
 
 **Symptoms:**
+
 - Video generation using unexpected model
 - Resolution parameter errors with Veo 2.0
 - Quality not matching expectations
 
 **Solution:**
+
 1. Verify `DEFAULT_VIDEO_MODEL` is set correctly in `.env.local`
 2. Check model name spelling (e.g., `veo-3.1-generate-001`)
 3. Restart server after changing the variable
@@ -488,11 +541,13 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: File upload size limit errors
 
 **Symptoms:**
+
 - "File too large" errors for files under 100MB
 - Upload fails immediately without progress
 - 413 Payload Too Large errors
 
 **Solution:**
+
 1. Verify `MAX_FILE_SIZE_MB` is set appropriately in `.env.local`
 2. Check if reverse proxy (nginx, Apache) has lower limits
 3. Verify `FILES_API_ENABLED=true` for large files
@@ -502,11 +557,13 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Context caching not working
 
 **Symptoms:**
+
 - Slow responses in multi-turn conversations
 - High API costs for repeated context
 - No performance improvement over time
 
 **Solution:**
+
 1. Verify `ENABLE_CONTEXT_CACHING=true` in `.env.local`
 2. Check Gemini API supports caching for selected model
 3. Verify conversation has sufficient context to cache
@@ -518,16 +575,19 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: Slow AI response times
 
 **Symptoms:**
+
 - Long wait times for image/video generation
 - Timeout errors
 
 **Diagnostics:**
+
 1. Enable telemetry to measure latency: `ENABLE_AI_TELEMETRY=true`
 2. Check `latencyMs` in logs to identify slow endpoints
 3. Verify network connectivity to Gemini API
 4. Check Gemini API status page
 
 **Solutions:**
+
 - Use faster models (e.g., `gemini-2.0-flash-exp` instead of `gemini-1.5-pro`)
 - Reduce image resolution or video length
 - Check for rate limiting from Gemini API
@@ -535,15 +595,18 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: High memory usage
 
 **Symptoms:**
+
 - Server memory usage grows over time
 - Out of memory errors
 
 **Diagnostics:**
+
 1. Monitor memory with: `node --max-old-space-size=4096 server/index.ts`
 2. Check for memory leaks in long-running processes
 3. Profile with Node.js inspector
 
 **Solutions:**
+
 - Restart server periodically in production
 - Implement connection pooling for database
 - Clear old assets: `npm run maintain prune`
@@ -553,10 +616,12 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: API key exposed in client bundle
 
 **Symptoms:**
+
 - `GEMINI_API_KEY` visible in browser DevTools
 - Security warning in build output
 
 **Solution:**
+
 1. Verify `GEMINI_API_KEY` is NOT prefixed with `VITE_`
 2. Check `vite.config.ts` doesn't define the key
 3. Rebuild: `npm run build:all`
@@ -565,11 +630,13 @@ AI_RATE_LIMIT_MAX_REQUESTS=999999
 #### Issue: CORS errors in production
 
 **Symptoms:**
+
 - API requests blocked by CORS policy
 - Error: "No 'Access-Control-Allow-Origin' header"
 
 **Solution:**
 Set `CORS_ORIGIN` to your frontend domain:
+
 ```bash
 CORS_ORIGIN=https://yourdomain.com
 ```
@@ -578,89 +645,34 @@ For multiple origins, modify `server/app.ts` CORS configuration.
 
 ## Tailwind CSS Configuration
 
-### Current Setup (Development CDN)
+### Production Setup (Current)
 
-VibeBoard currently uses the Tailwind CSS CDN for development convenience. This approach works well for rapid prototyping but is not recommended for production deployments.
+Tailwind CSS is installed as a proper npm dependency with PostCSS integration. This provides:
 
-**CDN Warning:**
-```
-cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI.
-```
-
-This warning appears in the browser console during development and is expected behavior. The CDN version:
-- ✅ Works perfectly for development and testing
-- ✅ Requires no build configuration
-- ✅ Supports all Tailwind features
-- ❌ Larger bundle size than optimized builds
-- ❌ No tree-shaking or purging of unused styles
-- ❌ Slower performance in production
-
-### Production Installation (Future)
-
-For production deployments, Tailwind should be installed as a PostCSS plugin. This provides:
 - Optimized bundle sizes (only includes used styles)
 - Better performance (pre-compiled CSS)
-- Custom configuration support
+- No browser console warnings
 - Integration with build pipeline
 
-**Installation Steps:**
+**Configuration Files:**
 
-1. **Install dependencies:**
-```bash
-npm install -D tailwindcss postcss autoprefixer
-```
+- `tailwind.config.js` - Tailwind configuration with content paths
+- `postcss.config.js` - PostCSS plugins (tailwindcss, autoprefixer)
+- `index.css` - Contains `@tailwind` directives
 
-2. **Initialize Tailwind configuration:**
-```bash
-npx tailwindcss init -p
-```
+**How It Works:**
 
-This creates:
-- `tailwind.config.js` - Tailwind configuration
-- `postcss.config.js` - PostCSS configuration
+Vite automatically processes PostCSS during build. The pipeline:
 
-3. **Configure content paths in `tailwind.config.js`:**
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
-```
+1. Processes Tailwind directives in `index.css`
+2. Scans all files matching content paths for class usage
+3. Purges unused styles in production builds
+4. Minifies the output CSS
+5. Includes optimized CSS in the bundle
 
-4. **Create or update your main CSS file (e.g., `index.css`):**
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
+**Customization:**
 
-5. **Remove CDN script tag from `index.html`:**
-```html
-<!-- Remove this line: -->
-<script src="https://cdn.tailwindcss.com"></script>
-```
-
-6. **Import CSS in your entry point (`src/index.tsx`):**
-```typescript
-import './index.css';
-```
-
-7. **Rebuild and verify:**
-```bash
-npm run build
-npm run dev
-```
-
-**Configuration Options:**
-
-The `tailwind.config.js` file supports extensive customization:
+Edit `tailwind.config.js` to customize the design system:
 
 ```javascript
 /** @type {import('tailwindcss').Config} */
@@ -669,6 +681,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -677,55 +690,17 @@ export default {
       spacing: {
         // Custom spacing scale
       },
-      fontFamily: {
-        // Custom fonts
-      },
     },
   },
-  plugins: [
-    // Add Tailwind plugins here
-  ],
+  plugins: [],
 }
 ```
-
-**Build Integration:**
-
-Vite automatically processes PostCSS, so no additional configuration is needed. The build pipeline will:
-1. Process Tailwind directives
-2. Purge unused styles based on content paths
-3. Minify the output CSS
-4. Include in the production bundle
-
-**Migration Checklist:**
-
-- [ ] Install Tailwind and PostCSS dependencies
-- [ ] Create `tailwind.config.js` and `postcss.config.js`
-- [ ] Configure content paths for all template files
-- [ ] Add Tailwind directives to main CSS file
-- [ ] Remove CDN script tag from HTML
-- [ ] Import CSS in application entry point
-- [ ] Test all components for styling issues
-- [ ] Verify production build size reduction
-- [ ] Update deployment documentation
-
-**Expected Benefits:**
-
-After migration:
-- 70-90% reduction in CSS bundle size
-- Faster page load times
-- No browser console warnings
-- Better caching (CSS changes less frequently)
-- Custom theme configuration support
-
-**Current Status:**
-
-The CDN approach is intentional for the current development phase. Migration to PostCSS plugin should be prioritized before production deployment.
 
 ## Known Constraints (Phase 3)
 
 - Asset uploads honour the provided `fileName`; stick to simple filenames until sanitisation is introduced.
 - Gemini SDK calls now execute on the server (`/api/ai/*`), so the browser never sees `GEMINI_API_KEY`.
-- Tailwind CSS uses CDN for development; migrate to PostCSS plugin before production deployment.
+- Tailwind CSS is now installed as npm package with PostCSS integration for production builds.
 
 ## Future Configuration Hooks
 

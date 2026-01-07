@@ -71,13 +71,13 @@ describe("File Upload Service", () => {
         buffer: fs.readFileSync(testFilePath),
       } as Express.Multer.File;
 
-      const result = await uploadFile(
+      const result = await uploadFile({
         db,
         config,
-        mockFile,
-        testProjectId,
-        "text-document"
-      );
+        file: mockFile,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
 
       expect(result.id).toBeDefined();
       expect(result.projectId).toBe(testProjectId);
@@ -100,13 +100,13 @@ describe("File Upload Service", () => {
         buffer: imageBuffer,
       } as Express.Multer.File;
 
-      const result = await uploadFile(
+      const result = await uploadFile({
         db,
         config,
-        mockFile,
-        testProjectId,
-        "style-reference"
-      );
+        file: mockFile,
+        projectId: testProjectId,
+        purpose: "style-reference",
+      });
 
       expect(result.mimeType).toBe("image/png");
       expect(result.purpose).toBe("style-reference");
@@ -126,13 +126,13 @@ describe("File Upload Service", () => {
       } as Express.Multer.File;
 
       await expect(
-        uploadFile(
+        uploadFile({
           db,
           config,
-          mockFile,
-          "non-existent-project",
-          "text-document"
-        )
+          file: mockFile,
+          projectId: "non-existent-project",
+          purpose: "text-document",
+        })
       ).rejects.toThrow("Project not found");
     });
 
@@ -150,7 +150,13 @@ describe("File Upload Service", () => {
       } as Express.Multer.File;
 
       await expect(
-        uploadFile(db, config, mockFile, testProjectId, "general-reference")
+        uploadFile({
+          db,
+          config,
+          file: mockFile,
+          projectId: testProjectId,
+          purpose: "general-reference",
+        })
       ).rejects.toThrow("File size exceeds maximum");
     });
   });
@@ -168,13 +174,13 @@ describe("File Upload Service", () => {
         buffer: fs.readFileSync(testFilePath),
       } as Express.Multer.File;
 
-      const uploaded = await uploadFile(
+      const uploaded = await uploadFile({
         db,
         config,
-        mockFile,
-        testProjectId,
-        "text-document"
-      );
+        file: mockFile,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
 
       const retrieved = getFileById(db, uploaded.id);
 
@@ -212,8 +218,20 @@ describe("File Upload Service", () => {
         buffer: fs.readFileSync(file2Path),
       } as Express.Multer.File;
 
-      await uploadFile(db, config, mockFile1, testProjectId, "text-document");
-      await uploadFile(db, config, mockFile2, testProjectId, "text-document");
+      await uploadFile({
+        db,
+        config,
+        file: mockFile1,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
+      await uploadFile({
+        db,
+        config,
+        file: mockFile2,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
 
       const files = getProjectFiles(db, testProjectId);
 
@@ -241,15 +259,15 @@ describe("File Upload Service", () => {
         buffer: fs.readFileSync(testFilePath),
       } as Express.Multer.File;
 
-      const uploaded = await uploadFile(
+      const uploaded = await uploadFile({
         db,
         config,
-        mockFile,
-        testProjectId,
-        "text-document"
-      );
+        file: mockFile,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
 
-      updateFilePurpose(db, uploaded.id, "style-reference");
+      updateFilePurpose(db, uploaded.id, testProjectId, "style-reference");
 
       const updated = getFileById(db, uploaded.id);
       expect(updated?.purpose).toBe("style-reference");
@@ -269,13 +287,13 @@ describe("File Upload Service", () => {
         buffer: fs.readFileSync(testFilePath),
       } as Express.Multer.File;
 
-      const uploaded = await uploadFile(
+      const uploaded = await uploadFile({
         db,
         config,
-        mockFile,
-        testProjectId,
-        "text-document"
-      );
+        file: mockFile,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
 
       await deleteFile(db, uploaded.id, testProjectId);
 
@@ -304,13 +322,13 @@ describe("File Upload Service", () => {
         buffer: smallBuffer,
       } as Express.Multer.File;
 
-      const result = await uploadFile(
+      const result = await uploadFile({
         db,
         config,
-        mockFile,
-        testProjectId,
-        "text-document"
-      );
+        file: mockFile,
+        projectId: testProjectId,
+        purpose: "text-document",
+      });
 
       expect(result.inlineData).toBeDefined();
       expect(result.uri).toBeUndefined();

@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 import express from "express";
 import cors from "cors";
 import type { Database as SqliteDatabase } from "better-sqlite3";
@@ -13,6 +14,7 @@ import {
   createSubtypesRouter,
 } from "./routes/workflows";
 import { createTemplatesRouter } from "./routes/templates";
+import { errorHandler } from "./utils/errors";
 
 export const createApp = (db: SqliteDatabase, config: AppConfig) => {
   const app = express();
@@ -38,7 +40,39 @@ export const createApp = (db: SqliteDatabase, config: AppConfig) => {
   app.use("/api", createExportRouter(db, config));
 
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    const health: {
+      status: "ok" | "degraded";
+      timestamp: string;
+      database: "connected" | "disconnected";
+      diskSpace: "adequate" | "low" | "unknown";
+    } = {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      database: "disconnected",
+      diskSpace: "unknown",
+    };
+
+    // Check database connectivity
+    try {
+      db.prepare("SELECT 1").get();
+      health.database = "connected";
+    } catch {
+      health.database = "disconnected";
+      health.status = "degraded";
+    }
+
+    // Check disk space (basic check - verify data dir is writable)
+    try {
+      const testFile = path.join(config.dataDir, ".health-check");
+      fs.writeFileSync(testFile, "test", { flag: "w" });
+      fs.unlinkSync(testFile);
+      health.diskSpace = "adequate";
+    } catch {
+      health.diskSpace = "low";
+      health.status = "degraded";
+    }
+
+    res.json(health);
   });
 
   // --- Static frontend (production) ---
@@ -70,31 +104,8 @@ export const createApp = (db: SqliteDatabase, config: AppConfig) => {
     res.sendFile(path.join(distDir, "index.html"));
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use(
-    (
-      err: unknown,
-      req: express.Request,
-      res: express.Response,
-      next: express.NextFunction
-    ) => {
-      const payload = {
-        error:
-          err instanceof Error
-            ? { message: err.message, stack: err.stack }
-            : { message: String(err) },
-        method: req.method,
-        path: req.originalUrl,
-        timestamp: new Date().toISOString(),
-      };
-      // eslint-disable-next-line no-console
-      console.error("[server:error]", payload);
-      if (res.headersSent) {
-        return next(err);
-      }
-      res.status(500).json({ error: "Internal server error" });
-    }
-  );
+  // Standardized error handling middleware
+  app.use(errorHandler);
 
   return app;
 };

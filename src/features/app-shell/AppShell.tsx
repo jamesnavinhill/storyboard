@@ -21,13 +21,13 @@ const AppShell: React.FC = () => {
   const handlers = useAppShellHandlers(appState);
 
   // After first paint, warm common next-step chunks during idle time
+  // Note: Only prefetch lazy-loaded components that aren't already imported
   useEffect(() => {
     idlePrefetch(
       () => import("@/features/settings/components/EnhancedSettingsSheet")
     );
     idlePrefetch(() => import("@/features/storyboard/components/DocumentTab"));
-    idlePrefetch(() => import("./components/AppSidebar")); // contains LibraryPanel
-    idlePrefetch(() => import("./components/DesktopLayout")); // nested splits
+    // DesktopLayout and AppSidebar are statically imported, so no need to prefetch
   }, []);
 
   return (

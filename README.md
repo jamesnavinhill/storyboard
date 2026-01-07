@@ -90,3 +90,50 @@ See [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) for configuration details, 
 - Test for regressions (all existing features must work)
 
 See `.kiro/steering/current-mission.md` for detailed integration roadmap and `.kiro/specs/legacy/gemini-api-enhancement/tasks.md` for complete task breakdown.
+
+## Troubleshooting
+
+### Common Issues
+
+**Database not found or migration errors**
+
+```bash
+# Reset the database completely
+npm run db:reset
+```
+
+**Port already in use**
+
+- Default ports: 3000 (frontend), 4000 (backend)
+- Change backend port: set `PORT` in `.env.local`
+- Vite will auto-increment if 3000 is taken
+
+**Environment validation errors**
+
+- Check your `.env.local` against `.env.example`
+- Ensure `GEMINI_API_KEY` is set correctly
+- Server will show specific validation errors at startup
+
+**TypeScript errors in IDE**
+
+```bash
+# Restart TypeScript server or run:
+npm run typecheck
+```
+
+**Pre-commit hook failures**
+
+- Fix TypeScript errors in staged files
+- Run `npm run typecheck` to see all issues
+
+**Assets not loading**
+
+- Ensure `data/` directory exists and is writable
+- Check `/api/health` endpoint for disk space status
+- Run `npm run maintain prune` to clean orphaned files
+
+### Getting Help
+
+- Check existing [documentation](docs/)
+- Review [CONTRIBUTING.md](CONTRIBUTING.md) for development setup
+- Open an issue with reproduction steps
