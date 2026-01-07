@@ -34,6 +34,7 @@ export interface StoryboardGenerationRequest {
   concept: string;
   image?: { data: string; mimeType: string };
   styleNames: string[];
+  templateIds?: string[];
   sceneCount: number;
   workflow: Settings["workflow"];
   entryPoint?: string;
@@ -158,11 +159,11 @@ export interface SceneRecord {
   updatedAt: string;
 }
 
-export interface SceneGroupRecord extends SceneGroup {}
+export interface SceneGroupRecord extends SceneGroup { }
 
-export interface SceneTagRecord extends SceneTag {}
+export interface SceneTagRecord extends SceneTag { }
 
-export interface SceneHistoryRecord extends SceneHistoryEntry {}
+export interface SceneHistoryRecord extends SceneHistoryEntry { }
 
 export interface ChatRecord {
   id: string;

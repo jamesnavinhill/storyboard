@@ -22,7 +22,7 @@ interface ProjectManagerProps {
   compactList?: boolean;
   onSelectProject: (projectId: string) => void;
   onRenameProject?: (projectId: string, name: string) => Promise<void>;
-  onDeleteProject?: (projectId: string) => Promise<void>;
+  onDeleteProject?: (projectId: string) => void | Promise<void>;
   onExportProject?: (projectId: string) => Promise<void>;
   onImportProject?: (file: File) => Promise<void>;
 }
@@ -57,8 +57,8 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
     viewMode === "gallery"
       ? projects
       : projects.filter((project) =>
-          project.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        project.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   const handleRename = useCallback(
     async (projectId: string) => {
@@ -248,11 +248,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 return (
                   <button
                     key={project.id}
-                    className={`flex items-center gap-2 text-left px-2 py-1 rounded-md hover:bg-white/5 border ${
-                      isActive
+                    className={`flex items-center gap-2 text-left px-2 py-1 rounded-md hover:bg-white/5 border ${isActive
                         ? "border-soft-primary bg-primary-soft"
                         : "border-transparent"
-                    }`}
+                      }`}
                     onClick={() => onSelectProject(project.id)}
                     aria-label={`Open project ${project.name}`}
                   >
@@ -274,11 +273,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                 return (
                   <div
                     key={project.id}
-                    className={`group flex flex-col gap-2 rounded-lg bg-white/5 p-4 transition-colors hover:bg-white/10 cursor-pointer border ${
-                      isActive
+                    className={`group flex flex-col gap-2 rounded-lg bg-white/5 p-4 transition-colors hover:bg-white/10 cursor-pointer border ${isActive
                         ? "border-soft-primary bg-primary-soft"
                         : "border-transparent"
-                    }`}
+                      }`}
                     onClick={() => onSelectProject(project.id)}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -295,46 +293,46 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
                       {(onRenameProject ||
                         onExportProject ||
                         onDeleteProject) && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {onRenameProject && (
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setEditingId(project.id);
-                                setEditingName(project.name);
-                              }}
-                              className="icon-btn-overlay p-2"
-                              aria-label="Rename project"
-                            >
-                              <Pencil className="icon-sm" />
-                            </button>
-                          )}
-                          {onExportProject && (
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                onExportProject(project.id);
-                              }}
-                              className="icon-btn-overlay p-2"
-                              aria-label="Export project"
-                            >
-                              <Download className="icon-sm" />
-                            </button>
-                          )}
-                          {onDeleteProject && (
-                            <button
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDelete(project);
-                              }}
-                              className="icon-btn-overlay p-2"
-                              aria-label="Delete project"
-                            >
-                              <Trash2 className="icon-sm" />
-                            </button>
-                          )}
-                        </div>
-                      )}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {onRenameProject && (
+                              <button
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setEditingId(project.id);
+                                  setEditingName(project.name);
+                                }}
+                                className="icon-btn-overlay p-2"
+                                aria-label="Rename project"
+                              >
+                                <Pencil className="icon-sm" />
+                              </button>
+                            )}
+                            {onExportProject && (
+                              <button
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onExportProject(project.id);
+                                }}
+                                className="icon-btn-overlay p-2"
+                                aria-label="Export project"
+                              >
+                                <Download className="icon-sm" />
+                              </button>
+                            )}
+                            {onDeleteProject && (
+                              <button
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleDelete(project);
+                                }}
+                                className="icon-btn-overlay p-2"
+                                aria-label="Delete project"
+                              >
+                                <Trash2 className="icon-sm" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
                       <span>{formatDate(project.updatedAt)}</span>
@@ -414,18 +412,16 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setListViewMode("grid")}
-              className={`btn-base p-2 btn-ghost hover-primary transition-colors ${
-                listViewMode === "grid" ? "text-primary" : ""
-              }`}
+              className={`btn-base p-2 btn-ghost hover-primary transition-colors ${listViewMode === "grid" ? "text-primary" : ""
+                }`}
               aria-label="Grid view"
             >
               <Grid3x3 className="icon-md" />
             </button>
             <button
               onClick={() => setListViewMode("list")}
-              className={`btn-base p-2 btn-ghost hover-primary transition-colors ${
-                listViewMode === "list" ? "text-primary" : ""
-              }`}
+              className={`btn-base p-2 btn-ghost hover-primary transition-colors ${listViewMode === "list" ? "text-primary" : ""
+                }`}
               aria-label="List view"
             >
               <List className="icon-md" />
@@ -467,11 +463,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             {filteredProjects.map((project) => (
               <div
                 key={project.id}
-                className={`group relative bg-background border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${
-                  project.id === activeProjectId
+                className={`group relative bg-background border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${project.id === activeProjectId
                     ? "border-primary ring-2 ring-primary/20"
                     : "border-muted"
-                }`}
+                  }`}
                 onClick={() => onSelectProject(project.id)}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -559,11 +554,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({
             {filteredProjects.map((project) => (
               <div
                 key={project.id}
-                className={`group flex items-center justify-between bg-background border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${
-                  project.id === activeProjectId
+                className={`group flex items-center justify-between bg-background border rounded-lg p-3 cursor-pointer transition-all hover:shadow-sm ${project.id === activeProjectId
                     ? "border-soft-primary bg-primary-soft"
                     : "border-transparent"
-                }`}
+                  }`}
                 onClick={() => onSelectProject(project.id)}
               >
                 <div className="flex-1 min-w-0">

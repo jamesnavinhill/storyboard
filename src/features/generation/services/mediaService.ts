@@ -22,7 +22,7 @@ export const generateImageForScene = async (
     stylePrompts: input.stylePrompts,
     imageModel: input.settings.imageModel,
     workflow: input.settings.workflow,
-    templateIds: input.templateIds,
+    templateId: input.templateIds?.[0],
   });
 };
 

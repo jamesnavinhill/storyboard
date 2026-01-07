@@ -170,7 +170,7 @@ export const useAppShellHandlers = (appState: AppShellState) => {
         sceneId,
         prompt,
         extensionCount,
-        model: chosenModel,
+        model: chosenModel as import("../../../types").VideoModel,
       });
     },
     [appState.generation.media, appState.session.effectiveSettings.videoModel]
