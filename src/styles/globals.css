@@ -1,0 +1,164 @@
+/* ============================================
+   GLOBAL STYLES - Base & Layout
+   ============================================ */
+
+/* Base HTML & Body */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+  letter-spacing: var(--tracking-normal);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Selection styles */
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--foreground);
+}
+
+/* Paragraphs */
+p {
+  margin: 0;
+}
+
+/* Links */
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Buttons - Reset */
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Input - Reset */
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Project selector dropdown (header)
+   Apply only to legacy selects without the unified select-base class */
+.app-header select:not(.select-base) {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 8px 0px hsl(0 0% 0% / 0.04);
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.app-header select:not(.select-base):focus {
+  /* Keep subtle border on focus, avoid heavy outline */
+  border-color: var(--primary-soft-border);
+}
+
+.app-header select:not(.select-base):focus-visible {
+  outline: none;
+  box-shadow: 0 2px 8px 0px hsl(0 0% 0% / 0.04);
+}
+
+/* Dark mode: soften select border to light pink */
+.dark .app-header select:not(.select-base) {
+  /* Use neutral border by default; emphasis only on focus-visible */
+  border-color: var(--border);
+}
+
+/* Option styling for dropdown menu */
+.app-header select option {
+  background-color: var(--card);
+  color: var(--card-foreground);
+}
+
+/* Global select dropdown option styling (scoped to our select class) */
+.select-base option {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+}
+
+/* Replace the default blue highlight in supported UAs */
+.select-base option:hover,
+.select-base option:active,
+.select-base option:checked,
+.select-base:focus option:checked {
+  background-color: var(--primary-soft-bg-hover) !important;
+  color: var(--primary-soft-text) !important;
+}
+
+/* Note: Native select option styling support varies by browser; the rules above are best-effort only. */
+
+/* Code */
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* HR */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
