@@ -41,15 +41,14 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
   return (
     <div
       onClick={handleSelect}
-      className={`border rounded-md p-3 transition-all ${
-        isActive
+      className={`border rounded-sm p-3 transition-all ${isActive
           ? "border-primary bg-primary/5 shadow-sm"
           : "border-muted hover:bg-accent/50 hover:border-accent"
-      } ${onSelect ? "cursor-pointer" : ""}`}
+        } ${onSelect ? "cursor-pointer" : ""}`}
     >
       {/* Thumbnail or Placeholder */}
       {template.thumbnail ? (
-        <div className="w-full h-24 mb-3 rounded overflow-hidden bg-muted">
+        <div className="w-full h-24 mb-3 rounded-sm overflow-hidden bg-muted">
           <img
             src={template.thumbnail}
             alt={template.name}
@@ -57,7 +56,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           />
         </div>
       ) : (
-        <div className="w-full h-24 mb-3 rounded bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+        <div className="w-full h-24 mb-3 rounded-sm bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
           <span className="text-xs text-foreground-muted font-semibold">
             {template.name.substring(0, 2).toUpperCase()}
           </span>
@@ -87,7 +86,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
               {onEdit && (
                 <button
                   onClick={handleEdit}
-                  className="p-1 hover:bg-accent rounded"
+                  className="p-1 hover:bg-accent rounded-sm"
                   title="Edit template"
                 >
                   <Edit2 className="w-3 h-3" />
@@ -96,7 +95,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
               {onDelete && (
                 <button
                   onClick={handleDelete}
-                  className="p-1 hover:bg-destructive/10 text-destructive rounded"
+                  className="p-1 hover:bg-destructive/10 text-destructive rounded-sm"
                   title="Delete template"
                 >
                   <Trash2 className="w-3 h-3" />

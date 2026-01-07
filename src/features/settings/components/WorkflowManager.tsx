@@ -102,7 +102,7 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
         <p className="text-sm text-destructive">{error}</p>
         <button
           onClick={() => void fetchWorkflows()}
-          className="text-xs btn-outline px-3 py-1 rounded"
+          className="text-xs btn-outline px-3 py-1 rounded-sm"
         >
           Retry
         </button>
@@ -119,7 +119,7 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
         </h3>
         <button
           onClick={onCreate}
-          className="btn-soft-primary text-xs px-3 py-1.5 rounded flex items-center gap-1.5"
+          className="btn-soft-primary text-xs px-3 py-1.5 rounded-sm flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
           Create Workflow
@@ -139,9 +139,8 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setCategoryFilter(null)}
-            className={`text-xs px-2 py-1 rounded ${
-              categoryFilter === null ? "btn-soft-primary" : "btn-outline"
-            }`}
+            className={`text-xs px-2 py-1 rounded-sm ${categoryFilter === null ? "btn-soft-primary" : "btn-outline"
+              }`}
           >
             All
           </button>
@@ -149,9 +148,8 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
             <button
               key={value}
               onClick={() => setCategoryFilter(value)}
-              className={`text-xs px-2 py-1 rounded ${
-                categoryFilter === value ? "btn-soft-primary" : "btn-outline"
-              }`}
+              className={`text-xs px-2 py-1 rounded-sm ${categoryFilter === value ? "btn-soft-primary" : "btn-outline"
+                }`}
             >
               {label}
             </button>
@@ -175,7 +173,7 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
           {filteredWorkflows.map((workflow) => (
             <div
               key={workflow.id}
-              className="border border-muted rounded-md p-3 hover:bg-accent/50 transition-colors"
+              className="border border-muted rounded-sm p-3 hover:bg-accent/50 transition-colors"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
@@ -205,14 +203,14 @@ export const WorkflowManager: React.FC<WorkflowManagerProps> = ({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => onEdit(workflow)}
-                    className="p-1.5 hover:bg-accent rounded"
+                    className="p-1.5 hover:bg-accent rounded-sm"
                     title="Edit workflow"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(workflow.id)}
-                    className="p-1.5 hover:bg-destructive/10 text-destructive rounded"
+                    className="p-1.5 hover:bg-destructive/10 text-destructive rounded-sm"
                     title="Delete workflow"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

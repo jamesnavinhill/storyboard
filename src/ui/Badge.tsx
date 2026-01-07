@@ -21,25 +21,24 @@ export const Badge: React.FC<BadgeProps> = ({
     color === "primary"
       ? "primary"
       : color === "danger"
-      ? "destructive"
-      : color === "success"
-      ? "emerald"
-      : color === "warning"
-      ? "amber"
-      : "muted";
+        ? "destructive"
+        : color === "success"
+          ? "emerald"
+          : color === "warning"
+            ? "amber"
+            : "muted";
 
   const base =
     variant === "solid"
       ? `bg-${colorBase} text-background`
       : variant === "outline"
-      ? `border border-${colorBase} text-${colorBase}`
-      : `badge badge-soft-${color === "primary" ? "primary" : "neutral"}`;
+        ? `border border-${colorBase} text-${colorBase}`
+        : `badge badge-soft-${color === "primary" ? "primary" : "neutral"}`;
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${base} ${
-        className ?? ""
-      }`.trim()}
+      className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-sm ${base} ${className ?? ""
+        }`.trim()}
     >
       {children}
       {onClose && (

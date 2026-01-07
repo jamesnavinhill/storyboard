@@ -92,7 +92,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
         <p className="text-sm text-destructive">{error}</p>
         <button
           onClick={() => void fetchTemplates()}
-          className="text-xs btn-outline px-3 py-1 rounded"
+          className="text-xs btn-outline px-3 py-1 rounded-sm"
         >
           Retry
         </button>
@@ -107,7 +107,7 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
         <h3 className="text-sm font-semibold">Style Templates</h3>
         <button
           onClick={onCreate}
-          className="btn-soft-primary text-xs px-3 py-1.5 rounded flex items-center gap-1.5"
+          className="btn-soft-primary text-xs px-3 py-1.5 rounded-sm flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
           Create Template
@@ -128,9 +128,8 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setCategoryFilter(null)}
-              className={`text-xs px-2 py-1 rounded ${
-                categoryFilter === null ? "btn-soft-primary" : "btn-outline"
-              }`}
+              className={`text-xs px-2 py-1 rounded-sm ${categoryFilter === null ? "btn-soft-primary" : "btn-outline"
+                }`}
             >
               All
             </button>
@@ -138,11 +137,10 @@ export const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
               <button
                 key={category}
                 onClick={() => setCategoryFilter(category)}
-                className={`text-xs px-2 py-1 rounded ${
-                  categoryFilter === category
+                className={`text-xs px-2 py-1 rounded-sm ${categoryFilter === category
                     ? "btn-soft-primary"
                     : "btn-outline"
-                }`}
+                  }`}
               >
                 {category}
               </button>

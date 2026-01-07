@@ -164,42 +164,6 @@ export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
 
   return (
     <div className="chat-input-area">
-      {/* Attached files preview */}
-      {attachedFiles.length > 0 && (
-        <div className="attached-files-preview mb-2">
-          <div className="flex gap-2 flex-wrap">
-            {attachedFiles.map((file) => (
-              <div key={file.id} className="relative">
-                {file.preview ? (
-                  <img
-                    src={file.preview}
-                    alt={file.name}
-                    className="w-16 h-16 object-cover rounded border border-muted"
-                  />
-                ) : (
-                  <div className="w-16 h-16 flex items-center justify-center rounded border border-muted bg-muted">
-                    <span className="text-xs text-muted-foreground truncate px-1">
-                      {file.name}
-                    </span>
-                  </div>
-                )}
-                {onFileRemove && (
-                  <button
-                    type="button"
-                    onClick={() => onFileRemove(file.id)}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
-                    style={{ width: "20px", height: "20px" }}
-                    aria-label={`Remove ${file.name}`}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Input composer */}
       <div className="composer">
         <div className="composer-top">
@@ -210,7 +174,7 @@ export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className="composer-input hide-scrollbar"
-            rows={1}
+            rows={4}
             disabled={disabled}
             style={{ maxHeight }}
             aria-label="Message input"
@@ -220,59 +184,99 @@ export const ChatInputArea: React.FC<ChatInputAreaProps> = ({
         <div className="composer-divider" />
 
         <div className="composer-bottom">
-          <div className="flex items-center gap-1">
-            {/* File upload button */}
-            {showFileUpload && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleFileUploadClick}
-                  className="btn-base btn-ghost p-2"
-                  title="Attach file"
-                  disabled={disabled}
-                  aria-label="Attach file"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-4 h-4"
-                  >
-                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept={acceptedFileTypes}
-                  multiple
-                  className="hidden"
-                  aria-hidden="true"
-                />
-              </>
+          <div className="flex flex-col gap-2 w-full">
+            {/* Attached files preview - Moved inside composer-bottom */}
+            {attachedFiles.length > 0 && (
+              <div className="attached-files-preview">
+                <div className="flex gap-2 flex-wrap">
+                  {attachedFiles.map((file) => (
+                    <div key={file.id} className="relative">
+                      {file.preview ? (
+                        <img
+                          src={file.preview}
+                          alt={file.name}
+                          className="w-16 h-16 object-cover rounded-sm border border-muted"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 flex items-center justify-center rounded-sm border border-muted bg-muted">
+                          <span className="text-xs text-muted-foreground truncate px-1">
+                            {file.name}
+                          </span>
+                        </div>
+                      )}
+                      {onFileRemove && (
+                        <button
+                          type="button"
+                          onClick={() => onFileRemove(file.id)}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"
+                          style={{ width: "20px", height: "20px" }}
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
-            {/* Custom action buttons */}
-            {actions.map((action, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={action.onClick}
-                className="btn-base btn-ghost p-2"
-                title={action.label}
-                disabled={disabled || action.disabled}
-                aria-label={action.label}
-              >
-                <action.icon className="w-4 h-4" />
-              </button>
-            ))}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                {/* File upload button */}
+                {showFileUpload && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleFileUploadClick}
+                      className="btn-base btn-ghost p-2"
+                      title="Attach file"
+                      disabled={disabled}
+                      aria-label="Attach file"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="w-4 h-4"
+                      >
+                        <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept={acceptedFileTypes}
+                      multiple
+                      className="hidden"
+                      aria-hidden="true"
+                    />
+                  </>
+                )}
+
+                {/* Custom action buttons */}
+                {actions.map((action, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={action.onClick}
+                    className="btn-base btn-ghost p-2"
+                    title={action.label}
+                    disabled={disabled || action.disabled}
+                    aria-label={action.label}
+                  >
+                    <action.icon className="w-4 h-4" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
