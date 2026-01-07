@@ -1,4 +1,4 @@
-# Run and deploy your AI Studio app
+# StoryBoard AI Music Video Storyboarder
 
 The StoryBoard AI Music Video Storyboarder is a production-ready application with complete project management, asset management, and AI-powered storyboard generation capabilities. Five major phases are complete, with comprehensive backend infrastructure and polished frontend integration.
 
