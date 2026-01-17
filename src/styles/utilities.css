@@ -1,0 +1,2068 @@
+/* ============================================
+   UTILITY CLASSES - Reusable Components
+   ============================================ */
+
+/* Button Styles */
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  outline: none;
+  height: 36px;
+  padding: 0 16px;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border: 1px solid transparent;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px solid transparent;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: transparent;
+  border-color: var(--border);
+  color: var(--primary);
+}
+
+/* Soft Primary (pink chip-like) */
+.btn-soft-primary {
+  background-color: var(--primary-soft-bg);
+  color: var(--primary-soft-text);
+  border: 1px solid var(--primary-soft-border);
+}
+
+.btn-soft-primary:hover:not(:disabled),
+.btn-soft-primary[aria-pressed="true"],
+.btn-soft-primary.active {
+  background-color: var(--primary-soft-bg-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Compact size helper for icon/text small buttons */
+.btn-xs {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.btn-destructive {
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+  border: 1px solid transparent;
+}
+
+.btn-destructive:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Outline variant using destructive color to draw attention without heavy fill */
+/* Pink outline attention variant (uses brand primary tokens) */
+.btn-outline-destructive {
+  background-color: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-outline-destructive:hover:not(:disabled) {
+  background-color: var(--primary-soft-bg);
+  color: var(--primary-soft-text);
+  border-color: var(--primary-soft-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:disabled,
+.btn-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Select Styles */
+/* Base select reset + layout to align with button/input sizing */
+.select-base {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: transparent;
+  /* keep neutral until interaction */
+  color: var(--foreground);
+  outline: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Small select size - matches button height (36px) */
+.select-sm {
+  height: 36px;
+}
+
+.select-base:focus {
+  border-color: var(--primary-soft-border);
+  box-shadow: none;
+}
+
+.select-base:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Soft shaded variant to match btn-soft-primary */
+.select-soft-primary {
+  background-color: var(--primary-soft-bg);
+  color: var(--primary-soft-text);
+  border-color: var(--primary-soft-border);
+}
+
+.select-soft-primary:hover:not(:disabled) {
+  background-color: var(--primary-soft-bg-hover);
+}
+
+.select-soft-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Surface variant to blend on card contexts (e.g., header) */
+.select-surface-card {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border-color: var(--border);
+}
+
+/* Select menu helper: will expand at least to trigger width when used in a relatively positioned container */
+.select-menu {
+  min-width: 12rem;
+  /* fallback */
+}
+
+/* Input Styles */
+.input-base {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.input-base:focus {
+  /* Keep border subtle on focus */
+  border-color: var(--primary-soft-border);
+}
+
+.input-base:focus-visible {
+  /* Do not increase perceived stroke; color only */
+  outline: none;
+  box-shadow: none;
+}
+
+.input-base::placeholder {
+  color: var(--muted-foreground);
+}
+
+.textarea-panel {
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.textarea-panel:focus {
+  border-color: var(--primary-soft-border);
+  box-shadow: none;
+}
+
+/* Brand Glow Utilities */
+.brand-glow {
+  border-color: var(--brand-glow-border);
+  box-shadow: 0 0 0 1px var(--brand-glow-border),
+    0 0 0 6px var(--brand-glow-ambient), 0 0 20px -6px var(--brand-glow-soft);
+  transition: border-color 0.2s ease, box-shadow 0.35s ease,
+    background-color 0.2s ease;
+}
+
+.brand-glow:hover {
+  box-shadow: 0 0 0 1px var(--brand-glow-border),
+    0 0 0 7px var(--brand-glow-ambient), 0 0 24px -4px var(--brand-glow-soft);
+}
+
+.brand-glow:focus,
+.brand-glow:focus-visible,
+.brand-glow[data-glow-state="active"] {
+  border-color: var(--brand-glow-soft);
+  box-shadow: 0 0 0 1px var(--brand-glow-soft),
+    0 0 0 8px var(--brand-glow-ambient), 0 0 32px -2px var(--brand-glow-soft);
+}
+
+.brand-glow:disabled,
+.brand-glow[aria-disabled="true"] {
+  box-shadow: 0 0 0 1px var(--brand-glow-border),
+    0 0 0 6px var(--brand-glow-ambient);
+  opacity: 0.75;
+}
+
+/* Clean, minimal brand glow intended for composer container */
+.brand-glow-clean {
+  border: 1px solid var(--brand-glow-border);
+  box-shadow: 0 0 0 1px var(--brand-glow-border),
+    0 0 0 6px var(--brand-glow-ambient);
+  transition: border-color 0.2s ease, box-shadow 0.3s ease;
+}
+
+.brand-glow-clean:hover {
+  border-color: var(--brand-glow-soft);
+  box-shadow: 0 0 0 1px var(--brand-glow-soft),
+    0 0 0 6px var(--brand-glow-ambient);
+}
+
+/* Elevate subtly when any child receives focus */
+.brand-glow-clean:focus-within,
+.brand-glow-clean[data-glow-state="active"] {
+  border-color: var(--brand-glow-soft);
+  box-shadow: 0 0 0 1px var(--brand-glow-soft),
+    0 0 0 7px var(--brand-glow-ambient);
+}
+
+/* Overlay Panel used for scene edit/animate sheets */
+.overlay-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(12, 12, 16, 0.88);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 768px) {
+  .overlay-panel {
+    padding: 1.25rem;
+  }
+}
+
+/* Card Styles */
+.card {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Scene card background using theme variables */
+[data-card-bg] {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+[data-card-bg]:hover {
+  background-color: var(--card-hover-bg);
+}
+
+.card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Panel Styles */
+.panel {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.panel-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--muted);
+}
+
+.panel-body {
+  padding: 1rem;
+}
+
+/* Badge Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+}
+
+.badge-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.badge-soft-primary {
+  background-color: var(--primary-soft-bg);
+  color: var(--primary-soft-text);
+  border-color: var(--primary-soft-border);
+}
+
+.badge-secondary {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.badge-outline {
+  background-color: transparent;
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+/* Template Badge - Pink shaded badge for selected style templates */
+.template-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background-color: rgba(236, 72, 153, 0.2);
+  /* pink-500 with 20% opacity */
+  border: 1px solid rgba(236, 72, 153, 0.4);
+  /* pink-500 with 40% opacity */
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  color: rgb(249, 168, 212);
+  /* pink-300 */
+  transition: background-color 0.2s ease;
+  max-width: 200px;
+}
+
+.template-badge-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-badge-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.template-badge-remove:hover {
+  background-color: rgba(236, 72, 153, 0.3);
+  /* pink-500 with 30% opacity */
+}
+
+.template-badge-remove:focus-visible {
+  outline: 2px solid rgba(236, 72, 153, 0.6);
+  outline-offset: 2px;
+}
+
+/* Popover/Dropdown Styles */
+.popover {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Elevated popover variant with branded outline */
+.popover-elevated {
+  /* Subtle, neutral border and soft elevation */
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Borderless variant for chat settings panels */
+.popover-borderless {
+  border: none !important;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background-color: var(--border);
+  border: none;
+  margin: 1rem 0;
+}
+
+/* Composer (chat input area) */
+.composer {
+  background-color: var(--background);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem;
+  /* 8px */
+  border: 1px solid var(--brand-glow-ambient);
+  box-shadow: 0 0 0 1px var(--brand-glow-ambient);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.composer:focus-within {
+  border-color: var(--primary-soft-border);
+  box-shadow: 0 0 0 1px var(--brand-glow-ambient),
+    0 0 20px var(--brand-glow-ambient);
+}
+
+.composer-top {
+  position: relative;
+}
+
+.composer-input {
+  width: 100%;
+  font-size: 0.875rem;
+  /* text-sm */
+  padding: 0.625rem 1.5rem 0.625rem 0.625rem;
+  /* 10px top/bottom, tighter 24px right (reclaim space), 10px left */
+  color: var(--foreground);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  min-height: 96px;
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.composer-input::-webkit-scrollbar {
+  display: none;
+}
+
+
+.composer-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.composer-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 0.375rem 0.25rem;
+  /* 6px vertical, 4px horizontal inset */
+}
+
+.composer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.25rem;
+}
+
+/* Chat input container - stable layout for upload zone */
+.chat-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* 12px gap between sections */
+}
+
+/* Attached files area - collapses when empty, scrolls when full */
+.attached-files-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  /* Allow collapse when empty */
+  max-height: 200px;
+  /* Limit height to prevent excessive growth */
+  overflow-y: auto;
+  order: 1;
+  /* Appears first */
+}
+
+/* Hide when empty */
+.attached-files-area:empty {
+  display: none;
+}
+
+/* Upload zone - fixed position in layout */
+.upload-zone-fixed {
+  order: 2;
+  /* Appears second, after attached files */
+}
+
+/* Message input area - contains composer and style badges */
+.message-input-area {
+  order: 3;
+  /* Appears last */
+}
+
+.opacity-60 {
+  opacity: 0.6;
+}
+
+/* Text Styles */
+.text-primary {
+  color: var(--primary);
+}
+
+.text-secondary {
+  color: var(--secondary);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.text-destructive {
+  color: var(--destructive);
+}
+
+/* Background Styles */
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.bg-secondary {
+  background-color: var(--secondary);
+}
+
+.bg-muted {
+  background-color: var(--muted);
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+/* App surface background helper (matches cards/panels) */
+.bg-card {
+  background-color: var(--card);
+  color: var(--card-foreground);
+}
+
+/* Hover background for card-like surfaces */
+.bg-card-hover {
+  background-color: var(--card-hover-bg);
+}
+
+/* Utility to apply card hover background on hover */
+.hover-card:hover {
+  background-color: var(--card-hover-bg);
+}
+
+/* Border Styles */
+.border-primary {
+  border-color: var(--primary);
+}
+
+.border-secondary {
+  border-color: var(--secondary);
+}
+
+.border-muted {
+  border-color: var(--border);
+}
+
+/* Line aliases (semantic) */
+.border-line {
+  border-color: var(--line-color);
+}
+
+.border-line-strong {
+  border-color: var(--line-color-strong);
+}
+
+/* Soft brand border helper used for active cards in library */
+.border-soft-primary {
+  border-color: var(--primary-soft-border);
+}
+
+/* Soft brand background helper */
+.bg-primary-soft {
+  background-color: var(--primary-soft-bg);
+}
+
+/* Focus Ring */
+.focus-ring:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Subtle focus for inputs and selects - no heavy outline */
+.focus-subtle:focus,
+.focus-subtle:focus-visible {
+  outline: none;
+  border-color: var(--primary-soft-border);
+  box-shadow: none;
+}
+
+/* Scrollbar Utilities */
+/* stylelint-disable property-no-unsupported-browser-features */
+.no-scrollbar {
+  /* Hide scrollbars across browsers while preserving scroll */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, Opera */
+}
+
+/* Hide scrollbar utility - cross-browser support */
+.hide-scrollbar {
+  /* Firefox */
+  scrollbar-width: none;
+
+  /* IE and Edge */
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  /* Chrome, Safari, Opera */
+  display: none;
+}
+
+/* stylelint-enable property-no-unsupported-browser-features */
+
+/* Utility to allow sticky footers over scroll area backgrounds */
+.bg-popover\/80 {
+  /* Fallback solid popover background to avoid unsupported color-mix */
+  background-color: var(--popover);
+}
+
+/* Hover Effects */
+.hover-primary:hover {
+  color: var(--primary);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Chat bubble variants - simple and consistent */
+.bubble-user {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+}
+
+.bubble-assistant {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+}
+
+/* Icon Button Styles */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  transition: color 0.2s ease;
+  cursor: pointer;
+  outline: none;
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--primary);
+}
+
+.icon-btn:active:not(:disabled) {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Icon button on dark overlay (for scene cards) */
+.icon-btn-overlay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s ease, background-color 0.2s ease;
+  cursor: pointer;
+  outline: none;
+}
+
+.icon-btn-overlay:hover:not(:disabled) {
+  color: rgba(255, 255, 255, 1);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.icon-btn-overlay:active:not(:disabled) {
+  color: var(--primary);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.icon-btn-overlay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Icon sizing utilities */
+.icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-md {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-lg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Transitions */
+.transition-all {
+  transition: all 0.2s ease;
+}
+
+.transition-colors {
+  transition: color 0.2s ease, background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.transition-interactive {
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Backdrop Blur */
+.backdrop-blur {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* App-specific utilities */
+.app-container {
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background-color: var(--background);
+  /* Default layout sizing tokens */
+  --chat-min: 360px;
+  /* minimum chat panel width on desktop */
+  /* Use a fixed chat width on desktop to avoid jitter */
+  --chat-fixed: 420px;
+  /* desktop/tablet chat width */
+}
+
+.app-header {
+  /* Match chat panel shade */
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.app-main {
+  background-color: var(--border);
+  /* Mobile (default): stack content */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Desktop grid column sizing: keep chat panel consistent */
+@media (min-width: 768px) {
+  .app-main {
+    display: grid;
+    /* 2 columns: fixed chat width + flexible storyboard area */
+    grid-template-columns: var(--chat-fixed) minmax(0, 1fr);
+    gap: 1px;
+  }
+
+  /* Place panels explicitly in the grid */
+  .panel-chat {
+    grid-column: 1;
+  }
+
+  .panel-storyboard {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    display: grid;
+    /* Keep same stable 2-column structure on larger screens */
+    grid-template-columns: var(--chat-fixed) minmax(0, 1fr);
+    gap: 1px;
+  }
+
+  .panel-chat {
+    grid-column: 1;
+  }
+
+  .panel-storyboard {
+    grid-column: 2 / -1;
+  }
+}
+
+.panel-chat {
+  background-color: var(--card);
+}
+
+/* Fixed width helper equal to chat panel fixed width */
+.w-chat-fixed {
+  width: var(--chat-fixed);
+}
+
+.panel-storyboard {
+  /* Match chat panel shade */
+  background-color: var(--card);
+  /* Minimum and maximum width for each storyboard card; tweak to control columns */
+  --scene-min: 360px;
+  /* allow smaller cards on narrower screens */
+  --scene-max: 640px;
+  /* cap to avoid overly large cards */
+}
+
+/* ============================================
+   DESKTOP LAYOUT SHELL
+   ============================================ */
+
+.layout-desktop {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.layout-sidebar {
+  width: var(--layout-sidebar-width, 288px);
+  border-right: 1px solid var(--border);
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-sidebar--collapsed {
+  width: var(--layout-sidebar-collapsed-width, 72px);
+}
+
+.layout-sidebar--collapsed .layout-sidebar-inner {
+  align-items: center;
+  padding-inline: 0.75rem;
+}
+
+.layout-sidebar--collapsed .layout-sidebar-section {
+  align-items: center;
+}
+
+.layout-sidebar--collapsed .sidebar-nav-button,
+.layout-sidebar--collapsed .sidebar-action-button,
+.layout-sidebar--collapsed .sidebar-theme-button {
+  justify-content: center;
+  width: 100%;
+}
+
+.layout-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  /* Remove extra top padding to align headers with ChatPanel style */
+  padding: 0;
+  height: 100%;
+}
+
+.layout-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.layout-sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.layout-sidebar-title {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.layout-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.layout-sidebar-label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--muted-foreground);
+}
+
+.sidebar-nav-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.sidebar-nav-button:hover {
+  background-color: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.sidebar-nav-button.active {
+  background-color: var(--primary-soft-bg);
+  color: var(--primary-soft-text);
+  border-color: var(--primary-soft-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-button-label {
+  white-space: nowrap;
+}
+
+.layout-sidebar--collapsed .sidebar-button-label,
+.layout-sidebar--collapsed .layout-sidebar-label,
+.layout-sidebar--collapsed .layout-sidebar-title {
+  display: none;
+}
+
+.sidebar-action-button {
+  justify-content: flex-start;
+  width: 100%;
+  gap: 0.75rem;
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+  transition: color 0.2s ease;
+}
+
+.sidebar-action-button:hover:not(:disabled) {
+  background-color: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.layout-sidebar-footer {
+  margin-top: auto;
+}
+
+.sidebar-theme-button {
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+  transition: color 0.2s ease;
+}
+
+.sidebar-theme-button:hover:not(:disabled) {
+  background-color: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.layout-resizer {
+  position: relative;
+  width: 10px;
+  /* keep large hit target */
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  /* no thick block color by default */
+}
+
+/* Default: single hairline centered, same as other dividers */
+.layout-resizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  /* single clean line */
+  height: 100%;
+  background: var(--border);
+  /* match default divider color */
+  opacity: 1;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+/* Remove any previous glow implementation */
+.layout-resizer::before {
+  content: none;
+}
+
+/* Hover/active: single line highlights (no extra thickness) */
+.layout-resizer:hover::after,
+.layout-resizer:active::after,
+.layout-resizer[data-glow-state="active"]::after {
+  background: var(--primary);
+  /* subtle brand highlight */
+  opacity: 1;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .layout-resizer::after {
+    opacity: 1;
+  }
+}
+
+.layout-chat {
+  width: var(--layout-chat-width, 420px);
+  /* Use resizer for the single dividing line to avoid double borders */
+  border-right: none;
+  background-color: var(--card);
+  display: flex;
+  flex-direction: column;
+  /* Ensure internal scroll regions can shrink correctly */
+  min-width: 0;
+  min-height: 0;
+}
+
+.layout-chat--collapsed {
+  width: 0 !important;
+  flex: 0 0 0 !important;
+  overflow: hidden;
+}
+
+.layout-scene-manager {
+  width: var(--layout-scene-manager-width, 440px);
+  border-left: 1px solid var(--border);
+  background-color: var(--card);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-scene-manager--collapsed {
+  width: var(--layout-scene-manager-collapsed-width, 72px);
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.layout-main {
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-main--collapsed {
+  width: 0 !important;
+  flex: 0 0 0 !important;
+  overflow: hidden;
+}
+
+.layout-main-scroll {
+  height: 100%;
+  overflow-y: auto;
+  /* Reduced to half to tighten page chrome */
+  /* Remove top padding to align headers with ChatPanel */
+  padding: 0 0.75rem 0.75rem;
+}
+
+.library-surface {
+  background: var(--card);
+  border-left: 1px solid var(--border);
+}
+
+.library-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--card);
+  min-height: 56px;
+  /* Match manager panel header height for vertical alignment */
+}
+
+.library-toolbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.library-tabs {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.library-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.library-search {
+  position: relative;
+  min-width: 200px;
+  max-width: 320px;
+}
+
+.library-search-icon {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0.75rem;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.library-search-input {
+  padding-inline-start: 2.25rem;
+}
+
+.library-view-toggle {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+/* Selected state styles */
+.ring-primary {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.ring-primary-offset {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--primary);
+}
+
+/* Opacity utilities */
+.opacity-70 {
+  opacity: 0.7;
+}
+
+/* Flex utilities */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Accent color helper (for ranges, checkboxes, radios) */
+.accent-primary {
+  accent-color: var(--primary);
+}
+
+/* Common spacing utilities */
+.gap-xs {
+  gap: 0.5rem;
+}
+
+.gap-sm {
+  gap: 0.75rem;
+}
+
+.gap-md {
+  gap: 1rem;
+}
+
+.gap-lg {
+  gap: 1.5rem;
+}
+
+.p-panel {
+  padding: 1rem;
+}
+
+.p-panel-md {
+  padding: 1.25rem;
+}
+
+/* ============================================
+   CONSOLIDATED UTILITY CLASSES
+   ============================================ */
+
+/* Menu Item Pattern - used in dropdowns and context menus */
+.menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  transition: color 0.2s ease;
+}
+
+.menu-item:hover:not(:disabled) {
+  background-color: transparent;
+  color: var(--primary);
+}
+
+.menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hover-visible controls - icons that appear on hover */
+.hover-visible {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.group:hover .hover-visible,
+.group\/menu:hover .hover-visible {
+  opacity: 1;
+}
+
+/* Scene card controls - hover-based visibility */
+.scene-card-controls {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  pointer-events: none;
+}
+
+.scene-card:hover .scene-card-controls,
+.scene-card.menu-open .scene-card-controls,
+.scene-card.panel-open .scene-card-controls,
+.scene-card-controls.force-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Card overlay patterns */
+.overlay-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay-dark {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.overlay-darker {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+/* Text utilities */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-uppercase-xs {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Metadata badge - small info chips */
+.metadata-badge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+}
+
+/* Aspect ratio containers */
+.aspect-video {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-portrait {
+  aspect-ratio: 9 / 16;
+}
+
+/* Empty state container */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted-foreground);
+  text-align: center;
+  padding: 2rem;
+}
+
+.empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+}
+
+/* Filter button group pattern */
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid transparent;
+  transition: color 0.2s ease;
+}
+
+.filter-btn:hover:not(:disabled) {
+  background-color: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+/* Thumbnail preview container */
+.thumbnail-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-preview img,
+.thumbnail-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Action button group - horizontal button row */
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Divider with spacing */
+.divider-y {
+  height: 1px;
+  background-color: var(--border);
+  margin: 0.5rem 0;
+}
+
+/* Storyboard grid with responsive breakpoints and minimum card widths */
+.storyboard-grid {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+}
+
+/* Mobile: Single column, full width cards (<640px) */
+@media (max-width: 639px) {
+  .storyboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet: 2 columns with minimum 280px width (640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .storyboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Desktop: 2-4 columns with minimum 320px width (≥1024px) */
+@media (min-width: 1024px) {
+  .storyboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Prevent cards from becoming too small on very wide screens */
+@media (min-width: 1024px) {
+  .storyboard-grid {
+    max-width: calc(4 * 400px + 4.5rem);
+    /* Max 4 columns with gaps */
+  }
+}
+
+/* Cap individual scene card width and center within its grid cell */
+.scene-card {
+  width: 100%;
+  max-width: var(--scene-max, 640px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Drag cursor states */
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing;
+}
+
+/* Touch device support - always show drag handles on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .touch-visible {
+    opacity: 1 !important;
+  }
+}
+
+/* Screen reader only - visually hidden but accessible to assistive technology */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Border radius utilities */
+.rounded-sm {
+  border-radius: var(--radius-sm);
+}
+
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+
+.rounded-xl {
+  border-radius: var(--radius-xl);
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* Dashed placeholder used for 'Add New Scene' and similar affordances */
+.placeholder-dashed {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--muted-foreground);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.placeholder-dashed:hover {
+  /* Subtle hover: color change only */
+  border-color: var(--primary-soft-border);
+  color: var(--primary);
+}
+
+.placeholder-dashed:focus-visible {
+  /* Keep stroke constant; color only */
+  outline: none;
+  box-shadow: none;
+  border-color: var(--primary-soft-border);
+}
+
+/* Settings sheet width helper */
+.settings-sheet {
+  width: min(75vw, 720px);
+}
+
+/* Manager Panel Tab Content Container */
+.manager-tab-content {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ============================================
+   Chat Composer – Specific Overrides
+   ============================================ */
+/* Use panel surface for seamless look */
+.composer {
+  background-color: var(--card);
+}
+
+/* ============================================
+   MODAL BACKDROP - Overlay for Modal Dialogs
+   ============================================ */
+
+/* Modal backdrop with blur effect */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-modal-backdrop);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Modal content container - centered with solid background */
+.modal-content {
+  position: relative;
+  z-index: var(--z-modal);
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Centered modal variant - medium width for edit/animate/extend */
+.modal-centered {
+  max-width: 640px;
+}
+
+/* Modal structure components */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Form element styling */
+.form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.form-checkbox {
+  margin-right: 0.5rem;
+  accent-color: var(--primary);
+}
+
+.form-help-text {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin-top: 0.25rem;
+}
+
+/* History item styling */
+.history-item {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--background);
+}
+
+.history-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.history-version {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.history-timestamp {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+/* Fade in animation for smooth appearance */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   RESPONSIVE ICON-TO-TEXT ADAPTATION
+   ============================================ */
+
+/* Icon button with optional text label */
+.icon-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  min-height: 44px;
+  /* Touch target size */
+  min-width: 44px;
+  transition: all 0.2s ease;
+}
+
+.icon-button-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.icon-button-text {
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+/* Mobile: Icon only (<640px) */
+@media (max-width: 639px) {
+  .icon-button-text {
+    display: none;
+  }
+
+  .icon-button {
+    padding: 0.5rem;
+    justify-content: center;
+  }
+}
+
+/* ============================================
+   MANAGER PANEL SECTION STYLING
+   ============================================ */
+
+/* Manager section structure */
+.manager-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Add spacing between multiple sections */
+.manager-section+.manager-section {
+  margin-top: 1.5rem;
+}
+
+.manager-section-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.manager-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.manager-section-content {
+  padding: 1rem;
+}
+
+/* Form group for consistent spacing */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Form textarea styling */
+.form-textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease, height 0.1s ease;
+  resize: none;
+  min-height: 80px;
+  overflow-y: hidden;
+  max-height: none;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Form select styling */
+.form-select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Input group for inline form elements */
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-group .form-input {
+  flex: 1;
+}
+
+.input-group .form-select {
+  width: auto;
+  min-width: 120px;
+}
+
+/* Tag list styling */
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tag-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tag-name {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+.tag-delete {
+  padding: 0.25rem;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.tag-delete:hover {
+  background: transparent;
+  color: var(--destructive);
+}
+
+/* History list styling */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.history-entry {
+  padding: 0.75rem;
+  background-color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.history-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.history-action {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.history-time {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.history-details {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+/* Empty state styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  margin: 0.5rem 0 0 0;
+}
+
+.empty-state-subtext {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin: 0.25rem 0 0 0;
+}
+
+/* ============================================
+   MANAGER PANEL CONTAINER STRUCTURE
+   ============================================ */
+
+/* Manager panel container - flexbox layout for consistent structure */
+.manager-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Manager panel header - matches library panel header height for vertical alignment */
+.manager-panel-header {
+  height: 56px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Manager tab navigation - fixed height with border (matches library toolbar for vertical alignment) */
+.manager-tab-navigation {
+  flex-shrink: 0;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Manager tab container - flexible content area */
+.manager-tab-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* Manager Panel Tab Content Container */
+.manager-tab-content {
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ============================================
+   RESPONSIVE PADDING ADJUSTMENTS
+   ============================================ */
+
+/* Mobile: Reduced padding and header heights (<640px) */
+@media (max-width: 639px) {
+  .manager-tab-content {
+    padding: 12px;
+  }
+
+  .manager-panel-header {
+    height: 48px;
+  }
+
+  .manager-tab-navigation {
+    height: 48px;
+    /* Match library toolbar height on mobile */
+  }
+
+  .library-toolbar {
+    min-height: 48px;
+    /* Match reduced header height on mobile */
+  }
+}
+
+/* Tablet: Medium padding (640px - 1023px) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .manager-tab-content {
+    padding: 14px;
+  }
+}
+
+/* Desktop: Full padding (≥1024px) */
+@media (min-width: 1024px) {
+  .manager-tab-content {
+    padding: 16px;
+  }
+}
+
+/* ============================================
+   COLLAPSIBLE SECTION STYLING
+   ============================================ */
+
+/* Collapsible section transitions */
+.collapsible-content {
+  transition: max-height 0.2s ease, opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.collapsible-header {
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.collapsible-chevron {
+  transition: transform 0.2s ease;
+}
