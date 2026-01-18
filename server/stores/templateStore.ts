@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 import type { UnifiedDatabase, DatabaseRow } from "../database";
 import { escapeSqlLikePattern } from "./storeUtils";
+import { DEFAULT_TEMPLATES } from "../data/defaults";
 
 export interface StyleTemplate {
   id: string;
@@ -139,9 +140,44 @@ export const listStyleTemplates = async (
 
   sql += ` ORDER BY created_at DESC`;
 
-  const result = await db.query<StyleTemplateRow>(sql, params);
+  try {
+    const result = await db.query<StyleTemplateRow>(sql, params);
 
-  return result.rows.map(mapStyleTemplateRow);
+    // Fallback: If no templates found and no search, return defaults
+    if (result.rows.length === 0 && !options.search && (!options.category || options.category.length === 0)) {
+      const now = new Date().toISOString();
+      return DEFAULT_TEMPLATES.map((t) => ({
+        id: "default-" + t.name.toLowerCase().replace(/\s+/g, "-"),
+        ...t,
+        description: t.description || null,
+        thumbnail: null,
+        examples: null,
+        metadata: null,
+        category: t.category || null,
+        createdAt: now,
+        updatedAt: now,
+      }));
+    }
+
+    return result.rows.map(mapStyleTemplateRow);
+  } catch (error) {
+    // If table doesn't exist (migration failed), return defaults
+    if (!options.search && (!options.category || options.category.length === 0)) {
+      const now = new Date().toISOString();
+      return DEFAULT_TEMPLATES.map((t) => ({
+        id: "default-" + t.name.toLowerCase().replace(/\s+/g, "-"),
+        ...t,
+        description: t.description || null,
+        thumbnail: null,
+        examples: null,
+        metadata: null,
+        category: t.category || null,
+        createdAt: now,
+        updatedAt: now,
+      }));
+    }
+    return [];
+  }
 };
 
 export const getStyleTemplateById = async (

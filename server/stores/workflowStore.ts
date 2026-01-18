@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { UnifiedDatabase, DatabaseRow } from "../database";
 import { escapeSqlLikePattern } from "./storeUtils";
+import { DEFAULT_WORKFLOWS } from "../data/defaults";
 
 export interface Workflow {
   id: string;
@@ -8,12 +9,12 @@ export interface Workflow {
   description: string | null;
   thumbnail: string | null;
   category:
-    | "music-video"
-    | "commercial"
-    | "social"
-    | "explainer"
-    | "custom"
-    | "concept-art";
+  | "music-video"
+  | "commercial"
+  | "social"
+  | "explainer"
+  | "custom"
+  | "concept-art";
   systemInstruction: string;
   artStyle: string | null;
   examples: string[] | null;
@@ -37,12 +38,12 @@ interface CreateWorkflowInput {
   description?: string;
   thumbnail?: string;
   category:
-    | "music-video"
-    | "commercial"
-    | "social"
-    | "explainer"
-    | "custom"
-    | "concept-art";
+  | "music-video"
+  | "commercial"
+  | "social"
+  | "explainer"
+  | "custom"
+  | "concept-art";
   systemInstruction: string;
   artStyle?: string;
   examples?: string[];
@@ -54,12 +55,12 @@ interface UpdateWorkflowInput {
   description?: string;
   thumbnail?: string;
   category?:
-    | "music-video"
-    | "commercial"
-    | "social"
-    | "explainer"
-    | "custom"
-    | "concept-art";
+  | "music-video"
+  | "commercial"
+  | "social"
+  | "explainer"
+  | "custom"
+  | "concept-art";
   systemInstruction?: string;
   artStyle?: string;
   examples?: string[];
@@ -192,8 +193,44 @@ export const listWorkflows = async (
 
   sql += ` ORDER BY created_at DESC`;
 
-  const result = await db.query<WorkflowRow>(sql, params);
-  return result.rows.map(mapWorkflowRow);
+  try {
+    const result = await db.query<WorkflowRow>(sql, params);
+
+    // Fallback: If no workflows found and no specific search filters, return defaults
+    if (result.rows.length === 0 && !options.category && !options.search) {
+      const now = new Date().toISOString();
+      return DEFAULT_WORKFLOWS.map((w) => ({
+        id: "default-" + w.category,
+        ...w,
+        description: w.description || "",
+        thumbnail: w.thumbnail || null,
+        artStyle: w.artStyle || null,
+        examples: null,
+        metadata: null,
+        createdAt: now,
+        updatedAt: now,
+      }));
+    }
+
+    return result.rows.map(mapWorkflowRow);
+  } catch (error) {
+    // If table doesn't exist (migration failed), return defaults
+    if (!options.category && !options.search) {
+      const now = new Date().toISOString();
+      return DEFAULT_WORKFLOWS.map((w) => ({
+        id: "default-" + w.category,
+        ...w,
+        description: w.description || "",
+        thumbnail: w.thumbnail || null,
+        artStyle: w.artStyle || null,
+        examples: null,
+        metadata: null,
+        createdAt: now,
+        updatedAt: now,
+      }));
+    }
+    return [];
+  }
 };
 
 export const getWorkflowById = async (
