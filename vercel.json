@@ -2,10 +2,6 @@
     "version": 2,
     "builds": [
         {
-            "src": "vite.config.ts",
-            "use": "@vercel/vite"
-        },
-        {
             "src": "server/index.ts",
             "use": "@vercel/node"
         }
@@ -14,10 +10,6 @@
         {
             "source": "/api/(.*)",
             "destination": "/server/index.ts"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
         }
     ]
 }
