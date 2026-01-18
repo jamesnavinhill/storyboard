@@ -150,6 +150,11 @@ export const EnhancedSettingsSheet: React.FC<EnhancedSettingsSheetProps> = ({
             ))}
           </div>
 
+          {/* Persistent API Key Header */}
+          <div className="px-4 py-3 border-b border-muted bg-muted/10">
+            <ApiKeySettings variant="compact" />
+          </div>
+
           {/* Content */}
           <div className="flex-1 overflow-y-auto hide-scrollbar p-4">
             {/* Workflows Tab */}
@@ -195,11 +200,6 @@ export const EnhancedSettingsSheet: React.FC<EnhancedSettingsSheetProps> = ({
             {/* Models Tab */}
             {activeTab === "models" && (
               <div className="space-y-6">
-                {/* API Key Section */}
-                <div className="card p-3 border border-muted rounded-md bg-muted/20">
-                  <ApiKeySettings variant="compact" />
-                </div>
-
                 <SettingsPanel
                   key={JSON.stringify(settings)}
                   settings={settings}

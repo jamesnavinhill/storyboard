@@ -11,6 +11,7 @@ import { AppSidebar } from "./components/AppSidebar";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { useAppShellState } from "./hooks/useAppShellState";
 import { useAppShellHandlers } from "./hooks/useAppShellHandlers";
+import { ApiKeyOnboarding } from "@/features/settings/components/ApiKeyOnboarding";
 
 const AppShell: React.FC = () => {
   // Single orchestration hook that manages all app state
@@ -284,6 +285,7 @@ const AppShell: React.FC = () => {
         onClose={handlers.handleCloseProjectManager}
         onSave={handlers.handleSaveProjectMetadata}
       />
+      <ApiKeyOnboarding />
     </div>
   );
 };
