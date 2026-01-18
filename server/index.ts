@@ -2,18 +2,22 @@ import { getConfig } from "./config";
 import { initializeDatabase } from "./database";
 import { runMigrations } from "./migrations/runMigrations";
 import { createApp } from "./app";
+import { seedDefaultData } from "./seeds/defaultData";
 
 const startServer = async () => {
   const config = getConfig();
-  
+
   // Initialize the unified database (SQLite, Turso, or PostgreSQL)
   const db = await initializeDatabase();
-  
+
   // Run migrations (only for SQLite - Turso/Postgres migrations are run manually)
   const sqliteDb = db.getSqliteDb();
   if (sqliteDb) {
     runMigrations(sqliteDb);
   }
+
+  // Auto-seed default data if missing
+  await seedDefaultData(db);
 
   const app = createApp(db, config);
 

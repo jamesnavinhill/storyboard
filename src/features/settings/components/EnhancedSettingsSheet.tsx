@@ -11,6 +11,7 @@ import type {
   StyleTemplate,
 } from "../../../types/gemini-enhancement";
 import { useSettingsStore } from "../state";
+import { ApiKeySettings } from "./ApiKeySettings";
 
 interface EnhancedSettingsSheetProps {
   isOpen: boolean;
@@ -194,6 +195,11 @@ export const EnhancedSettingsSheet: React.FC<EnhancedSettingsSheetProps> = ({
             {/* Models Tab */}
             {activeTab === "models" && (
               <div className="space-y-6">
+                {/* API Key Section */}
+                <div className="card p-3 border border-muted rounded-md bg-muted/20">
+                  <ApiKeySettings variant="compact" />
+                </div>
+
                 <SettingsPanel
                   key={JSON.stringify(settings)}
                   settings={settings}
