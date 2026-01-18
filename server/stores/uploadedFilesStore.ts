@@ -1,128 +1,98 @@
-import type { Database as SqliteDatabase } from "better-sqlite3";
+/**
+ * Async Uploaded Files Store
+ *
+ * Provides async database operations for uploaded files.
+ */
+
+import type { UnifiedDatabase, DatabaseRow } from "../database";
 import type { UploadedFile, FilePurpose } from "../types";
+
+interface UploadedFileRow extends DatabaseRow {
+  id: string;
+  project_id: string;
+  name: string;
+  size: number;
+  mime_type: string;
+  purpose: FilePurpose;
+  uri: string | null;
+  inline_data: string | null;
+  thumbnail: string | null;
+  uploaded_at: string;
+}
+
+const mapUploadedFileRow = (row: UploadedFileRow): UploadedFile => ({
+  id: row.id,
+  projectId: row.project_id,
+  name: row.name,
+  size: row.size,
+  mimeType: row.mime_type,
+  purpose: row.purpose,
+  uri: row.uri ?? undefined,
+  inlineData: row.inline_data ?? undefined,
+  thumbnail: row.thumbnail ?? undefined,
+  uploadedAt: row.uploaded_at,
+});
 
 /**
  * Retrieves all uploaded files for a project
  */
-export const getUploadedFilesByProject = (
-  db: SqliteDatabase,
+export const getUploadedFilesByProject = async (
+  db: UnifiedDatabase,
   projectId: string
-): UploadedFile[] => {
-  const rows = db
-    .prepare(
-      `SELECT id, project_id, name, size, mime_type, purpose, uri, inline_data, thumbnail, uploaded_at
-       FROM uploaded_files
-       WHERE project_id = ?
-       ORDER BY uploaded_at DESC`
-    )
-    .all(projectId) as Array<{
-    id: string;
-    project_id: string;
-    name: string;
-    size: number;
-    mime_type: string;
-    purpose: FilePurpose;
-    uri?: string | null;
-    inline_data?: string | null;
-    thumbnail?: string | null;
-    uploaded_at: string;
-  }>;
+): Promise<UploadedFile[]> => {
+  const result = await db.query<UploadedFileRow>(
+    `SELECT id, project_id, name, size, mime_type, purpose, uri, inline_data, thumbnail, uploaded_at
+     FROM uploaded_files
+     WHERE project_id = ?
+     ORDER BY uploaded_at DESC`,
+    [projectId]
+  );
 
-  return rows.map((row) => ({
-    id: row.id,
-    projectId: row.project_id,
-    name: row.name,
-    size: row.size,
-    mimeType: row.mime_type,
-    purpose: row.purpose,
-    uri: row.uri ?? undefined,
-    inlineData: row.inline_data ?? undefined,
-    thumbnail: row.thumbnail ?? undefined,
-    uploadedAt: row.uploaded_at,
-  }));
+  return result.rows.map(mapUploadedFileRow);
 };
 
 /**
  * Retrieves a single uploaded file by ID
  */
-export const getUploadedFileById = (
-  db: SqliteDatabase,
+export const getUploadedFileById = async (
+  db: UnifiedDatabase,
   fileId: string
-): UploadedFile | null => {
-  const row = db
-    .prepare(
-      `SELECT id, project_id, name, size, mime_type, purpose, uri, inline_data, thumbnail, uploaded_at
-       FROM uploaded_files
-       WHERE id = ?`
-    )
-    .get(fileId) as
-    | {
-        id: string;
-        project_id: string;
-        name: string;
-        size: number;
-        mime_type: string;
-        purpose: FilePurpose;
-        uri?: string | null;
-        inline_data?: string | null;
-        thumbnail?: string | null;
-        uploaded_at: string;
-      }
-    | undefined;
+): Promise<UploadedFile | null> => {
+  const row = await db.queryOne<UploadedFileRow>(
+    `SELECT id, project_id, name, size, mime_type, purpose, uri, inline_data, thumbnail, uploaded_at
+     FROM uploaded_files
+     WHERE id = ?`,
+    [fileId]
+  );
 
-  if (!row) {
-    return null;
-  }
-
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    name: row.name,
-    size: row.size,
-    mimeType: row.mime_type,
-    purpose: row.purpose,
-    uri: row.uri ?? undefined,
-    inlineData: row.inline_data ?? undefined,
-    thumbnail: row.thumbnail ?? undefined,
-    uploadedAt: row.uploaded_at,
-  };
+  return row ? mapUploadedFileRow(row) : null;
 };
 
 /**
  * Creates a new uploaded file record
  */
-export const createUploadedFile = (
-  db: SqliteDatabase,
+export const createUploadedFile = async (
+  db: UnifiedDatabase,
   file: Omit<UploadedFile, "uploadedAt">
-): UploadedFile => {
+): Promise<UploadedFile> => {
   const now = new Date().toISOString();
 
-  db.prepare<{
-    id: string;
-    projectId: string;
-    name: string;
-    size: number;
-    mimeType: string;
-    purpose: string;
-    uri?: string;
-    inlineData?: string;
-    thumbnail?: string;
-    uploadedAt: string;
-  }>(
+  await db.execute(
     `INSERT INTO uploaded_files (id, project_id, name, size, mime_type, purpose, uri, inline_data, thumbnail, uploaded_at)
-     VALUES (@id, @projectId, @name, @size, @mimeType, @purpose, @uri, @inlineData, @thumbnail, @uploadedAt)`
-  ).run({
-    id: file.id,
-    projectId: file.projectId,
-    name: file.name,
-    size: file.size,
-    mimeType: file.mimeType,
-    purpose: file.purpose,
-    uri: file.uri,
-    inlineData: file.inlineData,
-    thumbnail: file.thumbnail,
-    uploadedAt: now,
-  });
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      file.id,
+      file.projectId,
+      file.name,
+      file.size,
+      file.mimeType,
+      file.purpose,
+      file.uri ?? null,
+      file.inlineData ?? null,
+      file.thumbnail ?? null,
+      now,
+    ]
+  );
 
   return {
     ...file,
@@ -133,34 +103,36 @@ export const createUploadedFile = (
 /**
  * Updates an uploaded file's purpose
  */
-export const updateUploadedFilePurpose = (
-  db: SqliteDatabase,
+export const updateUploadedFilePurpose = async (
+  db: UnifiedDatabase,
   fileId: string,
   purpose: FilePurpose
-): void => {
-  db.prepare(`UPDATE uploaded_files SET purpose = ? WHERE id = ?`).run(
+): Promise<void> => {
+  await db.execute(`UPDATE uploaded_files SET purpose = ? WHERE id = ?`, [
     purpose,
-    fileId
-  );
+    fileId,
+  ]);
 };
 
 /**
  * Deletes an uploaded file record
  */
-export const deleteUploadedFile = (
-  db: SqliteDatabase,
+export const deleteUploadedFile = async (
+  db: UnifiedDatabase,
   fileId: string
-): void => {
-  db.prepare(`DELETE FROM uploaded_files WHERE id = ?`).run(fileId);
+): Promise<void> => {
+  await db.execute(`DELETE FROM uploaded_files WHERE id = ?`, [fileId]);
 };
 
 /**
  * Deletes all uploaded files for a project
  * Used when a project is deleted
  */
-export const deleteUploadedFilesByProject = (
-  db: SqliteDatabase,
+export const deleteUploadedFilesByProject = async (
+  db: UnifiedDatabase,
   projectId: string
-): void => {
-  db.prepare(`DELETE FROM uploaded_files WHERE project_id = ?`).run(projectId);
+): Promise<void> => {
+  await db.execute(`DELETE FROM uploaded_files WHERE project_id = ?`, [
+    projectId,
+  ]);
 };

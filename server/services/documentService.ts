@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import {
   getDocument,
@@ -103,8 +103,8 @@ const validateDocumentContent = (content: unknown): DocumentContent => {
 /**
  * Verifies that a project exists
  */
-const verifyProjectExists = (db: SqliteDatabase, projectId: string): void => {
-  const project = getProjectById(db, projectId);
+const verifyProjectExists = async (db: UnifiedDatabase, projectId: string): Promise<void> => {
+  const project = await getProjectById(db, projectId);
   if (!project) {
     throw Object.assign(new Error("Project not found"), {
       statusCode: 404,
@@ -117,52 +117,52 @@ const verifyProjectExists = (db: SqliteDatabase, projectId: string): void => {
 /**
  * Gets the latest document for a project
  */
-export const getProjectDocument = (
-  db: SqliteDatabase,
+export const getProjectDocument = async (
+  db: UnifiedDatabase,
   projectId: string
-): ProjectDocument | null => {
-  verifyProjectExists(db, projectId);
-  return getDocument(db, projectId);
+): Promise<ProjectDocument | null> => {
+  await verifyProjectExists(db, projectId);
+  return await getDocument(db, projectId);
 };
 
 /**
  * Saves a new version of a document with validation
  * Automatically increments version and prunes old versions (keeps last 10)
  */
-export const saveProjectDocument = (
-  db: SqliteDatabase,
+export const saveProjectDocument = async (
+  db: UnifiedDatabase,
   projectId: string,
   content: unknown
-): ProjectDocument => {
-  verifyProjectExists(db, projectId);
+): Promise<ProjectDocument> => {
+  await verifyProjectExists(db, projectId);
   const validatedContent = validateDocumentContent(content);
-  return saveDocumentStore(db, projectId, validatedContent);
+  return await saveDocumentStore(db, projectId, validatedContent);
 };
 
 /**
  * Gets document history (all versions) for a project
  */
-export const getProjectDocumentHistory = (
-  db: SqliteDatabase,
+export const getProjectDocumentHistory = async (
+  db: UnifiedDatabase,
   projectId: string,
   limit: number = 10
-): ProjectDocument[] => {
-  verifyProjectExists(db, projectId);
-  return getDocumentHistoryStore(db, projectId, limit);
+): Promise<ProjectDocument[]> => {
+  await verifyProjectExists(db, projectId);
+  return await getDocumentHistoryStore(db, projectId, limit);
 };
 
 /**
  * Restores a previous document version by creating a new version with the old content
  */
-export const restoreProjectDocumentVersion = (
-  db: SqliteDatabase,
+export const restoreProjectDocumentVersion = async (
+  db: UnifiedDatabase,
   projectId: string,
   version: number
-): ProjectDocument | null => {
-  verifyProjectExists(db, projectId);
+): Promise<ProjectDocument | null> => {
+  await verifyProjectExists(db, projectId);
 
   // Verify the version exists
-  const oldVersion = getDocumentVersion(db, projectId, version);
+  const oldVersion = await getDocumentVersion(db, projectId, version);
   if (!oldVersion) {
     throw Object.assign(new Error("Document version not found"), {
       statusCode: 404,
@@ -171,7 +171,7 @@ export const restoreProjectDocumentVersion = (
     });
   }
 
-  return restoreDocumentVersionStore(db, projectId, version);
+  return await restoreDocumentVersionStore(db, projectId, version);
 };
 
 /**
@@ -347,15 +347,15 @@ export type ExportFormat = "markdown" | "pdf" | "json";
 /**
  * Exports a project document in the specified format
  */
-export const exportProjectDocument = (
-  db: SqliteDatabase,
+export const exportProjectDocument = async (
+  db: UnifiedDatabase,
   projectId: string,
   format: ExportFormat,
   includeAssets: boolean = false
-): { buffer: Buffer; mimeType: string; filename: string } => {
-  verifyProjectExists(db, projectId);
+): Promise<{ buffer: Buffer; mimeType: string; filename: string }> => {
+  await verifyProjectExists(db, projectId);
 
-  const doc = getDocument(db, projectId);
+  const doc = await getDocument(db, projectId);
   if (!doc) {
     throw Object.assign(new Error("Document not found"), {
       statusCode: 404,

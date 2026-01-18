@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase, DatabaseRow } from "../database";
 import type { Scene, SceneHistoryEntry, Asset } from "../types";
 import { getAssetsByIds } from "./assetStore";
 import { getAssetPublicUrl } from "../utils/assetHelpers";
@@ -8,7 +8,7 @@ interface SceneInput {
   description: string;
   aspectRatio: "16:9" | "9:16" | "1:1";
   orderIndex?: number;
-  duration?: number; // Duration in seconds, defaults to 5
+  duration?: number;
 }
 
 interface SceneUpdateInput {
@@ -17,172 +17,163 @@ interface SceneUpdateInput {
   orderIndex?: number;
   primaryImageAssetId?: string | null;
   primaryVideoAssetId?: string | null;
-  duration?: number; // Duration in seconds
+  duration?: number;
+}
+
+interface SceneRow extends DatabaseRow {
+  id: string;
+  project_id: string;
+  description: string;
+  aspect_ratio: "16:9" | "9:16" | "1:1";
+  order_index: number;
+  primary_image_asset_id: string | null;
+  primary_video_asset_id: string | null;
+  duration: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SceneWithGroupRow extends SceneRow {
+  group_id: string | null;
+}
+
+interface SceneHistoryRow extends DatabaseRow {
+  id: string;
+  scene_id: string;
+  description: string;
+  image_asset_id: string | null;
+  video_asset_id: string | null;
+  created_at: string;
+}
+
+interface SceneTagRow extends DatabaseRow {
+  scene_id: string;
+  tag_id: string;
+}
+
+interface MaxOrderRow extends DatabaseRow {
+  max_order: number;
 }
 
 const SCENE_HISTORY_LIMIT = 10;
 
-function recordSceneHistoryEntry(db: SqliteDatabase, scene: Scene): void {
+async function recordSceneHistoryEntry(
+  db: UnifiedDatabase,
+  scene: Scene
+): Promise<void> {
   const historyId = randomUUID();
 
-  db.prepare<{
-    id: string;
-    sceneId: string;
-    description: string;
-    imageAssetId?: string | null;
-    videoAssetId?: string | null;
-  }>(
+  await db.execute(
     `INSERT INTO scene_history (id, scene_id, description, image_asset_id, video_asset_id)
-     VALUES (@id, @sceneId, @description, @imageAssetId, @videoAssetId)`
-  ).run({
-    id: historyId,
-    sceneId: scene.id,
-    description: scene.description,
-    imageAssetId: scene.primaryImageAssetId ?? null,
-    videoAssetId: scene.primaryVideoAssetId ?? null,
-  });
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      historyId,
+      scene.id,
+      scene.description,
+      scene.primaryImageAssetId ?? null,
+      scene.primaryVideoAssetId ?? null,
+    ]
+  );
 
-  db.prepare<{
-    sceneId: string;
-    limit: number;
-  }>(
+  await db.execute(
     `DELETE FROM scene_history
-     WHERE scene_id = @sceneId
+     WHERE scene_id = ?
        AND id NOT IN (
          SELECT id FROM scene_history
-         WHERE scene_id = @sceneId
+         WHERE scene_id = ?
          ORDER BY created_at DESC
-         LIMIT @limit
-       )`
-  ).run({
-    sceneId: scene.id,
-    limit: SCENE_HISTORY_LIMIT,
-  });
+         LIMIT ?
+       )`,
+    [scene.id, scene.id, SCENE_HISTORY_LIMIT]
+  );
 }
 
-export const getScenesByProject = (
-  db: SqliteDatabase,
+export const getScenesByProject = async (
+  db: UnifiedDatabase,
   projectId: string
-): Scene[] => {
-  const rows = db
-    .prepare(
-      `SELECT id, project_id, description, aspect_ratio, order_index, primary_image_asset_id, primary_video_asset_id, duration, created_at, updated_at
-       FROM scenes WHERE project_id = ? ORDER BY order_index ASC`
-    )
-    .all(projectId) as Array<{
-    id: string;
-    project_id: string;
-    description: string;
-    aspect_ratio: "16:9" | "9:16" | "1:1";
-    order_index: number;
-    primary_image_asset_id?: string | null;
-    primary_video_asset_id?: string | null;
-    duration: number;
-    created_at: string;
-    updated_at: string;
-  }>;
-  return rows.map(mapSceneRow);
+): Promise<Scene[]> => {
+  const result = await db.query<SceneRow>(
+    `SELECT id, project_id, description, aspect_ratio, order_index, primary_image_asset_id, primary_video_asset_id, duration, created_at, updated_at
+     FROM scenes WHERE project_id = ? ORDER BY order_index ASC`,
+    [projectId]
+  );
+  return result.rows.map(mapSceneRow);
 };
 
-export const createScenes = (
-  db: SqliteDatabase,
+export const createScenes = async (
+  db: UnifiedDatabase,
   projectId: string,
   scenes: SceneInput[]
-): Scene[] => {
-  const orderStmt = db.prepare<{ projectId: string }>(
-    `SELECT COALESCE(MAX(order_index), -1) AS max_order FROM scenes WHERE project_id = @projectId`
+): Promise<Scene[]> => {
+  const orderRow = await db.queryOne<MaxOrderRow>(
+    `SELECT COALESCE(MAX(order_index), -1) AS max_order FROM scenes WHERE project_id = ?`,
+    [projectId]
   );
-  let currentOrder =
-    (orderStmt.get({ projectId }) as { max_order: number }).max_order + 1;
-
-  const insert = db.prepare<{
-    id: string;
-    projectId: string;
-    description: string;
-    aspectRatio: "16:9" | "9:16" | "1:1";
-    orderIndex: number;
-    duration: number;
-  }>(
-    `INSERT INTO scenes (id, project_id, description, aspect_ratio, order_index, duration)
-     VALUES (@id, @projectId, @description, @aspectRatio, @orderIndex, @duration)`
-  );
+  let currentOrder = (orderRow?.max_order ?? -1) + 1;
 
   const created: Scene[] = [];
 
-  const transaction = db.transaction((inputs: SceneInput[]) => {
-    for (const scene of inputs) {
-      const id = randomUUID();
-      const orderIndex = scene.orderIndex ?? currentOrder++;
-      const duration = scene.duration ?? 5; // Default to 5 seconds
-      insert.run({
-        id,
-        projectId,
-        description: scene.description,
-        aspectRatio: scene.aspectRatio,
-        orderIndex,
-        duration,
-      });
-      const row = db
-        .prepare(
-          `SELECT id, project_id, description, aspect_ratio, order_index, primary_image_asset_id, primary_video_asset_id, duration, created_at, updated_at FROM scenes WHERE id = ?`
-        )
-        .get(id) as {
-        id: string;
-        project_id: string;
-        description: string;
-        aspect_ratio: "16:9" | "9:16" | "1:1";
-        order_index: number;
-        primary_image_asset_id?: string | null;
-        primary_video_asset_id?: string | null;
-        duration: number;
-        created_at: string;
-        updated_at: string;
-      };
+  for (const scene of scenes) {
+    const id = randomUUID();
+    const orderIndex = scene.orderIndex ?? currentOrder++;
+    const duration = scene.duration ?? 5;
+
+    await db.execute(
+      `INSERT INTO scenes (id, project_id, description, aspect_ratio, order_index, duration)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, projectId, scene.description, scene.aspectRatio, orderIndex, duration]
+    );
+
+    const row = await db.queryOne<SceneRow>(
+      `SELECT id, project_id, description, aspect_ratio, order_index, primary_image_asset_id, primary_video_asset_id, duration, created_at, updated_at FROM scenes WHERE id = ?`,
+      [id]
+    );
+
+    if (row) {
       created.push(mapSceneRow(row));
     }
-  });
+  }
 
-  transaction(scenes);
   return created;
 };
 
-export const updateScene = (
-  db: SqliteDatabase,
+export const updateScene = async (
+  db: UnifiedDatabase,
   projectId: string,
   sceneId: string,
   updates: SceneUpdateInput
-): Scene | null => {
-  const existing = getSceneById(db, projectId, sceneId);
+): Promise<Scene | null> => {
+  const existing = await getSceneById(db, projectId, sceneId);
   if (!existing) {
     return null;
   }
 
   const fields: string[] = [];
-  const params: Record<string, unknown> = { projectId, sceneId };
+  const params: unknown[] = [];
 
   if (updates.description !== undefined) {
-    fields.push("description = @description");
-    params.description = updates.description;
+    fields.push("description = ?");
+    params.push(updates.description);
   }
   if (updates.aspectRatio !== undefined) {
-    fields.push("aspect_ratio = @aspectRatio");
-    params.aspectRatio = updates.aspectRatio;
+    fields.push("aspect_ratio = ?");
+    params.push(updates.aspectRatio);
   }
   if (updates.orderIndex !== undefined) {
-    fields.push("order_index = @orderIndex");
-    params.orderIndex = updates.orderIndex;
+    fields.push("order_index = ?");
+    params.push(updates.orderIndex);
   }
   if (updates.primaryImageAssetId !== undefined) {
-    fields.push("primary_image_asset_id = @primaryImageAssetId");
-    params.primaryImageAssetId = updates.primaryImageAssetId;
+    fields.push("primary_image_asset_id = ?");
+    params.push(updates.primaryImageAssetId);
   }
   if (updates.primaryVideoAssetId !== undefined) {
-    fields.push("primary_video_asset_id = @primaryVideoAssetId");
-    params.primaryVideoAssetId = updates.primaryVideoAssetId;
+    fields.push("primary_video_asset_id = ?");
+    params.push(updates.primaryVideoAssetId);
   }
   if (updates.duration !== undefined) {
-    fields.push("duration = @duration");
-    params.duration = updates.duration;
+    fields.push("duration = ?");
+    params.push(updates.duration);
   }
 
   if (fields.length === 0) {
@@ -207,122 +198,84 @@ export const updateScene = (
       nextVideoAssetId !== (existing.primaryVideoAssetId ?? null));
 
   if (shouldRecordHistory) {
-    recordSceneHistoryEntry(db, existing);
+    await recordSceneHistoryEntry(db, existing);
   }
 
-  const sql = `UPDATE scenes SET ${fields.join(
-    ", "
-  )} WHERE id = @sceneId AND project_id = @projectId`;
-  const result = db.prepare(sql).run(params);
+  params.push(sceneId, projectId);
+  const sql = `UPDATE scenes SET ${fields.join(", ")} WHERE id = ? AND project_id = ?`;
+  const result = await db.execute(sql, params);
+
   if (result.changes === 0) {
     return null;
   }
+
   return getSceneById(db, projectId, sceneId);
 };
 
-export const getSceneById = (
-  db: SqliteDatabase,
+export const getSceneById = async (
+  db: UnifiedDatabase,
   projectId: string,
   sceneId: string
-): Scene | null => {
-  const row = db
-    .prepare(
-      `SELECT id, project_id, description, aspect_ratio, order_index, primary_image_asset_id, primary_video_asset_id, duration, created_at, updated_at FROM scenes WHERE id = ? AND project_id = ?`
-    )
-    .get(sceneId, projectId) as
-    | {
-        id: string;
-        project_id: string;
-        description: string;
-        aspect_ratio: "16:9" | "9:16" | "1:1";
-        order_index: number;
-        primary_image_asset_id?: string | null;
-        primary_video_asset_id?: string | null;
-        duration: number;
-        created_at: string;
-        updated_at: string;
-      }
-    | undefined;
+): Promise<Scene | null> => {
+  const row = await db.queryOne<SceneRow>(
+    `SELECT id, project_id, description, aspect_ratio, order_index, primary_image_asset_id, primary_video_asset_id, duration, created_at, updated_at FROM scenes WHERE id = ? AND project_id = ?`,
+    [sceneId, projectId]
+  );
   return row ? mapSceneRow(row) : null;
 };
 
-export const reorderScenes = (
-  db: SqliteDatabase,
+export const reorderScenes = async (
+  db: UnifiedDatabase,
   projectId: string,
   sceneIds: string[]
-): Scene[] => {
-  const updateStmt = db.prepare<{
-    sceneId: string;
-    projectId: string;
-    orderIndex: number;
-  }>(
-    `UPDATE scenes SET order_index = @orderIndex WHERE id = @sceneId AND project_id = @projectId`
-  );
+): Promise<Scene[]> => {
+  for (let index = 0; index < sceneIds.length; index++) {
+    await db.execute(
+      `UPDATE scenes SET order_index = ? WHERE id = ? AND project_id = ?`,
+      [index, sceneIds[index], projectId]
+    );
+  }
 
-  const transaction = db.transaction((ids: string[]) => {
-    ids.forEach((sceneId, index) => {
-      updateStmt.run({
-        sceneId,
-        projectId,
-        orderIndex: index,
-      });
-    });
-  });
-
-  transaction(sceneIds);
   return getScenesByProject(db, projectId);
 };
 
-export const deleteScene = (
-  db: SqliteDatabase,
+export const deleteScene = async (
+  db: UnifiedDatabase,
   projectId: string,
   sceneId: string
-): boolean => {
-  // Delete scene row; FKs take care of cascading membership/history; assets/chat become unassigned
-  const result = db
-    .prepare(`DELETE FROM scenes WHERE id = ? AND project_id = ?`)
-    .run(sceneId, projectId);
+): Promise<boolean> => {
+  const result = await db.execute(
+    `DELETE FROM scenes WHERE id = ? AND project_id = ?`,
+    [sceneId, projectId]
+  );
+
   if (result.changes === 0) return false;
 
-  // Re-index remaining scenes to keep order_index contiguous
-  const remaining = getScenesByProject(db, projectId);
-  const update = db.prepare<{
-    sceneId: string;
-    projectId: string;
-    orderIndex: number;
-  }>(
-    `UPDATE scenes SET order_index = @orderIndex WHERE id = @sceneId AND project_id = @projectId`
-  );
-  const tx = db.transaction((scenes: Scene[]) => {
-    scenes.forEach((s, idx) =>
-      update.run({ sceneId: s.id, projectId, orderIndex: idx })
+  const remaining = await getScenesByProject(db, projectId);
+
+  for (let idx = 0; idx < remaining.length; idx++) {
+    await db.execute(
+      `UPDATE scenes SET order_index = ? WHERE id = ? AND project_id = ?`,
+      [idx, remaining[idx].id, projectId]
     );
-  });
-  tx(remaining);
+  }
+
   return true;
 };
 
-export const getSceneHistory = (
-  db: SqliteDatabase,
+export const getSceneHistory = async (
+  db: UnifiedDatabase,
   sceneId: string
-): SceneHistoryEntry[] => {
-  const rows = db
-    .prepare(
-      `SELECT id, scene_id, description, image_asset_id, video_asset_id, created_at
-       FROM scene_history
-       WHERE scene_id = ?
-       ORDER BY created_at DESC, id DESC`
-    )
-    .all(sceneId) as Array<{
-    id: string;
-    scene_id: string;
-    description: string;
-    image_asset_id?: string | null;
-    video_asset_id?: string | null;
-    created_at: string;
-  }>;
+): Promise<SceneHistoryEntry[]> => {
+  const result = await db.query<SceneHistoryRow>(
+    `SELECT id, scene_id, description, image_asset_id, video_asset_id, created_at
+     FROM scene_history
+     WHERE scene_id = ?
+     ORDER BY created_at DESC, id DESC`,
+    [sceneId]
+  );
 
-  const entries = rows.map(mapSceneHistoryRow);
+  const entries = result.rows.map(mapSceneHistoryRow);
   const assetIds = Array.from(
     new Set(
       entries
@@ -335,7 +288,7 @@ export const getSceneHistory = (
     return entries;
   }
 
-  const assets = getAssetsByIds(db, assetIds);
+  const assets = await getAssetsByIds(db, assetIds);
   const assetMap = new Map<string, Asset>(
     assets.map((asset) => [asset.id, asset])
   );
@@ -355,96 +308,74 @@ export const getSceneHistory = (
   });
 };
 
-export const restoreSceneFromHistory = (
-  db: SqliteDatabase,
+export const restoreSceneFromHistory = async (
+  db: UnifiedDatabase,
   projectId: string,
   sceneId: string,
   historyId: string
-): Scene | null => {
-  const existing = getSceneById(db, projectId, sceneId);
+): Promise<Scene | null> => {
+  const existing = await getSceneById(db, projectId, sceneId);
   if (!existing) {
     return null;
   }
 
-  const row = db
-    .prepare(
-      `SELECT id, scene_id, description, image_asset_id, video_asset_id, created_at
-       FROM scene_history
-       WHERE id = ? AND scene_id = ?`
-    )
-    .get(historyId, sceneId) as
-    | {
-        id: string;
-        scene_id: string;
-        description: string;
-        image_asset_id?: string | null;
-        video_asset_id?: string | null;
-        created_at: string;
-      }
-    | undefined;
+  const row = await db.queryOne<SceneHistoryRow>(
+    `SELECT id, scene_id, description, image_asset_id, video_asset_id, created_at
+     FROM scene_history
+     WHERE id = ? AND scene_id = ?`,
+    [historyId, sceneId]
+  );
 
   if (!row) {
     return null;
   }
 
-  recordSceneHistoryEntry(db, existing);
+  await recordSceneHistoryEntry(db, existing);
 
-  db.prepare(
+  await db.execute(
     `UPDATE scenes
-       SET description = @description,
-           primary_image_asset_id = @imageAssetId,
-           primary_video_asset_id = @videoAssetId
-     WHERE id = @sceneId AND project_id = @projectId`
-  ).run({
-    description: row.description,
-    imageAssetId: row.image_asset_id ?? null,
-    videoAssetId: row.video_asset_id ?? null,
-    sceneId,
-    projectId,
-  });
+       SET description = ?,
+           primary_image_asset_id = ?,
+           primary_video_asset_id = ?
+     WHERE id = ? AND project_id = ?`,
+    [
+      row.description,
+      row.image_asset_id ?? null,
+      row.video_asset_id ?? null,
+      sceneId,
+      projectId,
+    ]
+  );
 
   return getSceneById(db, projectId, sceneId);
 };
 
-export const getScenesWithGroups = (
-  db: SqliteDatabase,
+export const getScenesWithGroups = async (
+  db: UnifiedDatabase,
   projectId: string
-): Array<Scene & { groupId?: string | null }> => {
-  const rows = db
-    .prepare(
-      `SELECT s.id, s.project_id, s.description, s.aspect_ratio, s.order_index,
-              s.primary_image_asset_id, s.primary_video_asset_id, s.duration, s.created_at, s.updated_at,
-              sgm.group_id
-       FROM scenes s
-       LEFT JOIN scene_group_members sgm ON s.id = sgm.scene_id
-       WHERE s.project_id = ?
-       ORDER BY s.order_index ASC`
-    )
-    .all(projectId) as Array<{
-    id: string;
-    project_id: string;
-    description: string;
-    aspect_ratio: "16:9" | "9:16" | "1:1";
-    order_index: number;
-    primary_image_asset_id?: string | null;
-    primary_video_asset_id?: string | null;
-    duration: number;
-    created_at: string;
-    updated_at: string;
-    group_id?: string | null;
-  }>;
+): Promise<Array<Scene & { groupId: string | null }>> => {
+  const result = await db.query<SceneWithGroupRow>(
+    `SELECT s.id, s.project_id, s.description, s.aspect_ratio, s.order_index,
+            s.primary_image_asset_id, s.primary_video_asset_id, s.duration, s.created_at, s.updated_at,
+            sgm.group_id
+     FROM scenes s
+     LEFT JOIN scene_group_members sgm ON s.id = sgm.scene_id
+     WHERE s.project_id = ?
+     ORDER BY s.order_index ASC`,
+    [projectId]
+  );
 
-  return rows.map((row) => ({
+  return result.rows.map((row) => ({
     ...mapSceneRow(row),
     groupId: row.group_id ?? null,
   }));
 };
 
-export const getScenesWithTags = (
-  db: SqliteDatabase,
+export const getScenesWithTags = async (
+  db: UnifiedDatabase,
   projectId: string
-): Array<Scene & { tagIds: string[] }> => {
-  const scenes = getScenesByProject(db, projectId);
+): Promise<Array<Scene & { tagIds: string[] }>> => {
+  const scenes = await getScenesByProject(db, projectId);
 
   const sceneTagsMap = new Map<string, string[]>();
 
@@ -452,18 +383,14 @@ export const getScenesWithTags = (
     const sceneIds = scenes.map((s) => s.id);
     const placeholders = sceneIds.map(() => "?").join(",");
 
-    const rows = db
-      .prepare(
-        `SELECT sta.scene_id, sta.tag_id
-         FROM scene_tag_assignments sta
-         WHERE sta.scene_id IN (${placeholders})`
-      )
-      .all(...sceneIds) as Array<{
-      scene_id: string;
-      tag_id: string;
-    }>;
+    const result = await db.query<SceneTagRow>(
+      `SELECT sta.scene_id, sta.tag_id
+       FROM scene_tag_assignments sta
+       WHERE sta.scene_id IN (${placeholders})`,
+      sceneIds
+    );
 
-    for (const row of rows) {
+    for (const row of result.rows) {
       if (!sceneTagsMap.has(row.scene_id)) {
         sceneTagsMap.set(row.scene_id, []);
       }
@@ -479,18 +406,7 @@ export const getScenesWithTags = (
 
 // Mappers
 
-const mapSceneRow = (row: {
-  id: string;
-  project_id: string;
-  description: string;
-  aspect_ratio: "16:9" | "9:16" | "1:1";
-  order_index: number;
-  primary_image_asset_id?: string | null;
-  primary_video_asset_id?: string | null;
-  duration: number;
-  created_at: string;
-  updated_at: string;
-}): Scene => ({
+const mapSceneRow = (row: SceneRow): Scene => ({
   id: row.id,
   projectId: row.project_id,
   description: row.description,
@@ -503,14 +419,7 @@ const mapSceneRow = (row: {
   updatedAt: row.updated_at,
 });
 
-function mapSceneHistoryRow(row: {
-  id: string;
-  scene_id: string;
-  description: string;
-  image_asset_id?: string | null;
-  video_asset_id?: string | null;
-  created_at: string;
-}): SceneHistoryEntry {
+function mapSceneHistoryRow(row: SceneHistoryRow): SceneHistoryEntry {
   return {
     id: row.id,
     sceneId: row.scene_id,

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import { ZodError } from "zod";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import type { FilePurpose } from "../types";
 import { uploadFileSchema, filePurposeSchema } from "../validation";
@@ -15,7 +15,7 @@ import {
 } from "../services/fileUploadService";
 import { getProjectById } from "../stores/projectStore";
 
-export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
+export const createFilesRouter = (db: UnifiedDatabase, config: AppConfig) => {
   const router = Router();
 
   // Configure multer for disk storage with dynamic file size limit
@@ -60,7 +60,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
         const { projectId, purpose } = validationResult.data;
 
         // Verify project exists
-        const project = getProjectById(db, projectId);
+        const project = await getProjectById(db, projectId);
         if (!project) {
           return res.status(404).json({
             error: "Project not found",
@@ -118,14 +118,14 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
   );
 
   // GET /api/files/:id - Get file details
-  router.get("/:id", (req: Request, res: Response) => {
+  router.get("/:id", async (req: Request, res: Response) => {
     const requestId = randomUUID();
     res.setHeader("x-request-id", requestId);
 
     try {
       const { id } = req.params;
 
-      const file = getFileById(db, id);
+      const file = await getFileById(db, id);
       if (!file) {
         return res.status(404).json({
           error: "File not found",
@@ -136,7 +136,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
       }
 
       // Verify project ownership - ensure project exists
-      const project = getProjectById(db, file.projectId);
+      const project = await getProjectById(db, file.projectId);
       if (!project) {
         return res.status(404).json({
           error: "Project not found",
@@ -185,7 +185,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
       const purpose = bodyValidation.data;
 
       // Get file to verify it exists and get project ID
-      const file = getFileById(db, id);
+      const file = await getFileById(db, id);
       if (!file) {
         return res.status(404).json({
           error: "File not found",
@@ -196,7 +196,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
       }
 
       // Verify project exists
-      const project = getProjectById(db, file.projectId);
+      const project = await getProjectById(db, file.projectId);
       if (!project) {
         return res.status(404).json({
           error: "Project not found",
@@ -207,7 +207,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
       }
 
       // Update file purpose
-      const updatedFile = updateFilePurpose(db, id, file.projectId, purpose);
+      const updatedFile = await updateFilePurpose(db, id, file.projectId, purpose);
 
       res.json({
         file: updatedFile,
@@ -239,7 +239,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
     try {
       const { id } = req.params;
 
-      const file = getFileById(db, id);
+      const file = await getFileById(db, id);
       if (!file) {
         return res.status(404).json({
           error: "File not found",
@@ -250,7 +250,7 @@ export const createFilesRouter = (db: SqliteDatabase, config: AppConfig) => {
       }
 
       // Verify project ownership - ensure project exists
-      const project = getProjectById(db, file.projectId);
+      const project = await getProjectById(db, file.projectId);
       if (!project) {
         return res.status(404).json({
           error: "Project not found",

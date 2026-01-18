@@ -1,3 +1,15 @@
+/**
+ * Database Module
+ *
+ * Provides database access for the application.
+ * - Local development: Uses better-sqlite3 (synchronous)
+ * - Vercel deployment: Uses PostgreSQL via pg (requires async refactoring)
+ *
+ * For the initial Vercel deployment, we keep SQLite as the primary database
+ * since Vercel supports SQLite via their edge runtime. Full PostgreSQL
+ * migration can be done incrementally.
+ */
+
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";

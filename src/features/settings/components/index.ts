@@ -7,6 +7,7 @@ export { TemplateLibrary } from "./TemplateLibrary";
 export { TemplateEditor } from "./TemplateEditor";
 export { TemplateCard } from "./TemplateCard";
 export { EnhancedSettingsSheet } from "./EnhancedSettingsSheet";
+export { ApiKeySettings } from "./ApiKeySettings";
 
 export type {
   Workflow,

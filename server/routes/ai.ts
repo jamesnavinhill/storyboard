@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { ZodError, type infer as ZodInfer } from "zod";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import {
   aiChatSchema,
@@ -33,7 +33,8 @@ import {
   generateVideoPrompt,
 } from "../services/geminiClient";
 import { VideoParameterValidationError } from "../services/videoModelCapabilities";
-import { getProjectById, getSceneById } from "../stores/projectStore";
+import { getProjectById } from "../stores/projectStore";
+import { getSceneById } from "../stores/sceneStore";
 import { getAssetById } from "../stores/assetStore";
 import { updateScene } from "../stores/sceneStore";
 import { getStyleTemplateById } from "../stores/templateStore";
@@ -46,6 +47,7 @@ import {
   type ApiRouteError,
 } from "../utils/aiTelemetry";
 import { createRateLimiter } from "../utils/rateLimiter";
+import { runWithContext } from "../utils/requestContext";
 
 type AiChatPayload = ZodInfer<typeof aiChatSchema>;
 type AiChatStreamPayload = ZodInfer<typeof aiChatStreamSchema>;
@@ -60,8 +62,8 @@ type AiVideoPromptPayload = ZodInfer<typeof aiVideoPromptSchema>;
 type AiGenerateVideoPayload = ZodInfer<typeof aiGenerateVideoSchema>;
 type AiExtendVideoPayload = ZodInfer<typeof aiExtendVideoSchema>;
 
-const requireProject = (db: SqliteDatabase, projectId: string) => {
-  const project = getProjectById(db, projectId);
+const requireProject = async (db: UnifiedDatabase, projectId: string) => {
+  const project = await getProjectById(db, projectId);
   if (!project) {
     throw Object.assign(new Error("Project not found"), {
       statusCode: 404,
@@ -72,12 +74,12 @@ const requireProject = (db: SqliteDatabase, projectId: string) => {
   return project;
 };
 
-const requireScene = (
-  db: SqliteDatabase,
+const requireScene = async (
+  db: UnifiedDatabase,
   projectId: string,
   sceneId: string
 ) => {
-  const scene = getSceneById(db, projectId, sceneId);
+  const scene = await getSceneById(db, projectId, sceneId);
   if (!scene) {
     throw Object.assign(new Error("Scene not found"), {
       statusCode: 404,
@@ -132,7 +134,27 @@ const extractModel = (body: unknown): string | undefined => {
   return undefined;
 };
 
-export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
+/**
+ * Extract user-provided API key from Authorization header
+ * Format: "Bearer <api_key>"
+ * Returns undefined if not present or invalid format
+ */
+const extractUserApiKey = (req: Request): string | undefined => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return undefined;
+  }
+
+  const parts = authHeader.split(" ");
+  if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer") {
+    return undefined;
+  }
+
+  const token = parts[1]?.trim();
+  return token || undefined;
+};
+
+export const createAiRouter = (db: UnifiedDatabase, config: AppConfig) => {
   const router = Router();
   const telemetry = createAiTelemetryLogger(config);
   const rateLimiter = createRateLimiter({
@@ -188,14 +210,24 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       }) => void
     ) => Promise<T>
   ): Promise<void> => {
+    // Extract user API key from Authorization header
+    const userApiKey = extractUserApiKey(req);
+    const requestId = randomUUID();
+
     try {
-      const result = await withRequestContext({
-        req,
-        res,
-        endpoint,
-        telemetry,
-        handler,
-      });
+      // Run the handler within the request context so geminiClient can access the user API key
+      const result = await runWithContext(
+        { userApiKey, requestId },
+        async () => {
+          return withRequestContext({
+            req,
+            res,
+            endpoint,
+            telemetry,
+            handler,
+          });
+        }
+      );
       res.json(result);
     } catch (error) {
       const apiError = error as ApiRouteError;
@@ -291,6 +323,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
 
   router.post("/chat/stream", async (req, res) => {
     const requestId = randomUUID();
+    const userApiKey = extractUserApiKey(req);
     const start = Date.now();
     res.setHeader("x-request-id", requestId);
     res.setHeader("Content-Type", "text/event-stream");
@@ -315,14 +348,18 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         ? { data: data.image.data, mimeType: data.image.mimeType }
         : undefined;
 
-      const stream = streamChatResponse(
-        data.prompt,
-        history,
-        image,
-        data.chatModel,
-        data.workflow,
-        data.thinkingMode
-      );
+      // Run within request context so geminiClient can access user API key
+      const stream = await runWithContext(
+        { userApiKey, requestId },
+        () => streamChatResponse(
+          data.prompt,
+          history,
+          image,
+          data.chatModel,
+          data.workflow,
+          data.thinkingMode
+        )
+      ) as AsyncGenerator<string, void, unknown>;
 
       let connectionClosed = false;
       req.on("close", () => {
@@ -420,7 +457,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       if (data.templateIds && data.templateIds.length > 0) {
         for (const id of data.templateIds) {
           try {
-            const template = getStyleTemplateById(db, id);
+            const template = await getStyleTemplateById(db, id);
             if (template && template.stylePrompt) {
               templatePrompts.push(template.stylePrompt);
             }
@@ -500,7 +537,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       if (data.templateIds && data.templateIds.length > 0) {
         for (const id of data.templateIds) {
           try {
-            const template = getStyleTemplateById(db, id);
+            const template = await getStyleTemplateById(db, id);
             if (template && template.stylePrompt) {
               templateStylePrompts.push(template.stylePrompt);
             } else if (!template) {
@@ -523,8 +560,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         prompt: data.description,
       });
 
-      requireProject(db, data.projectId);
-      const scene = requireScene(db, data.projectId, data.sceneId);
+      await requireProject(db, data.projectId);
+      const scene = await requireScene(db, data.projectId, data.sceneId);
 
       const image = await generateSceneImage(
         data.description,
@@ -536,7 +573,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       );
 
       const buffer = Buffer.from(image.data, "base64");
-      const { asset } = persistAssetBuffer({
+      const { asset } = await persistAssetBuffer({
         db,
         config,
         projectId: data.projectId,
@@ -551,8 +588,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         },
       });
 
-      const updatedScene = requireScene(db, data.projectId, data.sceneId);
-      const enriched = enrichSceneWithAssets(db, updatedScene);
+      const updatedScene = await requireScene(db, data.projectId, data.sceneId);
+      const enriched = await enrichSceneWithAssets(db, updatedScene);
       return {
         asset: { id: asset.id },
         url: enriched.imageUrl,
@@ -570,8 +607,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         geminiModel: "gemini-2.5-flash-image",
       });
 
-      requireProject(db, data.projectId);
-      const scene = requireScene(db, data.projectId, data.sceneId);
+      await requireProject(db, data.projectId);
+      const scene = await requireScene(db, data.projectId, data.sceneId);
       if (!scene.primaryImageAssetId) {
         throw Object.assign(new Error("Scene has no image to edit."), {
           statusCode: 400,
@@ -579,7 +616,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           retryable: false,
         });
       }
-      const asset = getAssetById(db, scene.primaryImageAssetId);
+      const asset = await getAssetById(db, scene.primaryImageAssetId);
       if (!asset) {
         throw Object.assign(new Error("Image asset not found."), {
           statusCode: 404,
@@ -590,7 +627,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       const { base64, mimeType } = readAssetBase64(asset.filePath);
       const edited = await editSceneImage(base64, mimeType, data.prompt);
       const buffer = Buffer.from(edited.data, "base64");
-      const { asset: newAsset } = persistAssetBuffer({
+      const { asset: newAsset } = await persistAssetBuffer({
         db,
         config,
         projectId: data.projectId,
@@ -604,8 +641,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           previousAssetId: asset.id,
         },
       });
-      const updatedScene = requireScene(db, data.projectId, data.sceneId);
-      const enriched = enrichSceneWithAssets(db, updatedScene);
+      const updatedScene = await requireScene(db, data.projectId, data.sceneId);
+      const enriched = await enrichSceneWithAssets(db, updatedScene);
       return {
         asset: { id: newAsset.id },
         url: enriched.imageUrl,
@@ -621,8 +658,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       );
       setMeta({ projectId: data.projectId });
 
-      requireProject(db, data.projectId);
-      const scene = requireScene(db, data.projectId, data.sceneId);
+      await requireProject(db, data.projectId);
+      const scene = await requireScene(db, data.projectId, data.sceneId);
       if (!scene.primaryImageAssetId) {
         throw Object.assign(new Error("Scene has no image to reference."), {
           statusCode: 400,
@@ -630,7 +667,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           retryable: false,
         });
       }
-      const asset = getAssetById(db, scene.primaryImageAssetId);
+      const asset = await getAssetById(db, scene.primaryImageAssetId);
       if (!asset) {
         throw Object.assign(new Error("Image asset not found."), {
           statusCode: 404,
@@ -657,8 +694,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
       const data: AiVideoPromptPayload = aiVideoPromptSchema.parse(req.body);
       setMeta({ projectId: data.projectId });
 
-      requireProject(db, data.projectId);
-      const scene = requireScene(db, data.projectId, data.sceneId);
+      await requireProject(db, data.projectId);
+      const scene = await requireScene(db, data.projectId, data.sceneId);
       if (!scene.primaryImageAssetId) {
         throw Object.assign(new Error("Scene has no image to reference."), {
           statusCode: 400,
@@ -666,7 +703,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           retryable: false,
         });
       }
-      const asset = getAssetById(db, scene.primaryImageAssetId);
+      const asset = await getAssetById(db, scene.primaryImageAssetId);
       if (!asset) {
         throw Object.assign(new Error("Image asset not found."), {
           statusCode: 404,
@@ -696,8 +733,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         prompt: data.prompt,
       });
 
-      requireProject(db, data.projectId);
-      const scene = requireScene(db, data.projectId, data.sceneId);
+      await requireProject(db, data.projectId);
+      const scene = await requireScene(db, data.projectId, data.sceneId);
       if (!scene.primaryImageAssetId) {
         throw Object.assign(
           new Error("Scene requires an image before generating video."),
@@ -708,7 +745,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           }
         );
       }
-      const asset = getAssetById(db, scene.primaryImageAssetId);
+      const asset = await getAssetById(db, scene.primaryImageAssetId);
       if (!asset) {
         throw Object.assign(new Error("Image asset not found."), {
           statusCode: 404,
@@ -727,7 +764,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         data.duration
       );
       const buffer = Buffer.from(video.data);
-      const { asset: newAsset } = persistAssetBuffer({
+      const { asset: newAsset } = await persistAssetBuffer({
         db,
         config,
         projectId: data.projectId,
@@ -743,8 +780,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           ...video.metadata,
         },
       });
-      const updatedScene = requireScene(db, data.projectId, data.sceneId);
-      const enriched = enrichSceneWithAssets(db, updatedScene);
+      const updatedScene = await requireScene(db, data.projectId, data.sceneId);
+      const enriched = await enrichSceneWithAssets(db, updatedScene);
       return {
         asset: { id: newAsset.id },
         url: enriched.videoUrl,
@@ -762,8 +799,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         prompt: data.prompt,
       });
 
-      requireProject(db, data.projectId);
-      const scene = requireScene(db, data.projectId, data.sceneId);
+      await requireProject(db, data.projectId);
+      const scene = await requireScene(db, data.projectId, data.sceneId);
 
       if (!scene.primaryVideoAssetId) {
         throw Object.assign(
@@ -776,7 +813,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         );
       }
 
-      const asset = getAssetById(db, scene.primaryVideoAssetId);
+      const asset = await getAssetById(db, scene.primaryVideoAssetId);
       if (!asset) {
         throw Object.assign(new Error("Video asset not found."), {
           statusCode: 404,
@@ -816,7 +853,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
 
       const buffer = Buffer.from(extendedVideo.data);
       const newDuration = videoDuration + data.extensionCount * 7;
-      const { asset: newAsset } = persistAssetBuffer({
+      const { asset: newAsset } = await persistAssetBuffer({
         db,
         config,
         projectId: data.projectId,
@@ -834,8 +871,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         },
       });
 
-      const updatedScene = requireScene(db, data.projectId, data.sceneId);
-      const enriched = enrichSceneWithAssets(db, updatedScene);
+      const updatedScene = await requireScene(db, data.projectId, data.sceneId);
+      const enriched = await enrichSceneWithAssets(db, updatedScene);
 
       return {
         asset: { id: newAsset.id },
@@ -867,8 +904,8 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           geminiModel: "gemini-2.5-flash",
         });
 
-        requireProject(db, projectId);
-        const scene = requireScene(db, projectId, sceneId);
+        await requireProject(db, projectId);
+        const scene = await requireScene(db, projectId, sceneId);
 
         // Regenerate the scene description using Gemini
         const newDescription = await regenerateSceneDescription(
@@ -876,7 +913,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
         );
 
         // Update the scene with the new description and clear assets using the store
-        const updatedScene = updateScene(db, projectId, sceneId, {
+        const updatedScene = await updateScene(db, projectId, sceneId, {
           description: newDescription,
           primaryImageAssetId: null,
           primaryVideoAssetId: null,
@@ -890,7 +927,7 @@ export const createAiRouter = (db: SqliteDatabase, config: AppConfig) => {
           });
         }
 
-        const enriched = enrichSceneWithAssets(db, updatedScene);
+        const enriched = await enrichSceneWithAssets(db, updatedScene);
 
         return {
           scene: enriched,

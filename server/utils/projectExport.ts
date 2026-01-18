@@ -1,19 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import archiver from "archiver";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
+import { getProjectById, getSettings } from "../stores/projectStore";
 import {
-  getProjectById,
   getScenesByProject,
-  getChatMessages,
-  getSettings,
-  listSceneGroups,
-  listSceneTags,
   getScenesWithGroups,
   getScenesWithTags,
-} from "../stores/projectStore";
+} from "../stores/sceneStore";
+import { getChatMessages } from "../stores/chatStore";
 import { listAssetsByProject } from "../stores/assetStore";
+import { listSceneGroups } from "../stores/groupStore";
+import { listSceneTags } from "../stores/tagStore";
 
 export interface ExportManifest {
   manifestVersion: number;
@@ -77,25 +76,25 @@ export interface ExportManifest {
  * - assets/ folder with all image/video files
  */
 export const exportProject = async (
-  db: SqliteDatabase,
+  db: UnifiedDatabase,
   config: AppConfig,
   projectId: string
 ): Promise<archiver.Archiver> => {
-  const project = getProjectById(db, projectId);
+  const project = await getProjectById(db, projectId);
   if (!project) {
     throw new Error(`Project not found: ${projectId}`);
   }
 
-  const scenes = getScenesByProject(db, projectId);
-  const chatMessages = getChatMessages(db, projectId);
-  const assets = listAssetsByProject(db, projectId);
-  const settings = getSettings(db, projectId);
-  const groups = listSceneGroups(db, projectId);
-  const tags = listSceneTags(db, projectId);
+  const scenes = await getScenesByProject(db, projectId);
+  const chatMessages = await getChatMessages(db, projectId);
+  const assets = await listAssetsByProject(db, projectId);
+  const settings = await getSettings(db, projectId);
+  const groups = await listSceneGroups(db, projectId);
+  const tags = await listSceneTags(db, projectId);
 
   // Get group and tag associations
-  const scenesWithGroups = getScenesWithGroups(db, projectId);
-  const scenesWithTags = getScenesWithTags(db, projectId);
+  const scenesWithGroups = await getScenesWithGroups(db, projectId);
+  const scenesWithTags = await getScenesWithTags(db, projectId);
 
   // Create a map for quick lookup
   const sceneGroupMap = new Map(scenesWithGroups.map((s) => [s.id, s.groupId]));

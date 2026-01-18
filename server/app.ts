@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs";
 import express from "express";
 import cors from "cors";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "./database";
 import type { AppConfig } from "./config";
 import { createProjectsRouter } from "./routes/projects";
 import { createAssetsRouter } from "./routes/assets";
@@ -16,7 +16,7 @@ import {
 import { createTemplatesRouter } from "./routes/templates";
 import { errorHandler } from "./utils/errors";
 
-export const createApp = (db: SqliteDatabase, config: AppConfig) => {
+export const createApp = (db: UnifiedDatabase, config: AppConfig) => {
   const app = express();
 
   app.use(
@@ -39,7 +39,7 @@ export const createApp = (db: SqliteDatabase, config: AppConfig) => {
   app.use("/api/templates", createTemplatesRouter(db));
   app.use("/api", createExportRouter(db, config));
 
-  app.get("/api/health", (_req, res) => {
+  app.get("/api/health", async (_req, res) => {
     const health: {
       status: "ok" | "degraded";
       timestamp: string;
@@ -54,7 +54,7 @@ export const createApp = (db: SqliteDatabase, config: AppConfig) => {
 
     // Check database connectivity
     try {
-      db.prepare("SELECT 1").get();
+      await db.query("SELECT 1");
       health.database = "connected";
     } catch {
       health.database = "disconnected";

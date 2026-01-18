@@ -1,16 +1,17 @@
 import { Router } from "express";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import { createAssetSchema, updateAssetSchema } from "../validation";
 import { getAssetById, updateAsset, deleteAsset } from "../stores/assetStore";
-import { getProjectById, getSceneById } from "../stores/projectStore";
+import { getProjectById } from "../stores/projectStore";
+import { getSceneById } from "../stores/sceneStore";
 import type { AppConfig } from "../config";
 import { getAssetPublicUrl } from "../utils/assetHelpers";
 import { persistAssetBuffer } from "../utils/assetPersistence";
 
-export const createAssetsRouter = (db: SqliteDatabase, config: AppConfig) => {
+export const createAssetsRouter = (db: UnifiedDatabase, config: AppConfig) => {
   const router = Router();
 
-  router.post("/", (req, res) => {
+  router.post("/", async (req, res) => {
     const parsed = createAssetSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten() });
@@ -18,20 +19,20 @@ export const createAssetsRouter = (db: SqliteDatabase, config: AppConfig) => {
     const { projectId, sceneId, type, mimeType, fileName, data, metadata } =
       parsed.data;
 
-    const project = getProjectById(db, projectId);
+    const project = await getProjectById(db, projectId);
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
     }
 
     if (sceneId) {
-      const scene = getSceneById(db, projectId, sceneId);
+      const scene = await getSceneById(db, projectId, sceneId);
       if (!scene) {
         return res.status(404).json({ error: "Scene not found" });
       }
     }
 
     const buffer = Buffer.from(data, "base64");
-    const { asset } = persistAssetBuffer({
+    const { asset } = await persistAssetBuffer({
       db,
       config,
       projectId,
@@ -49,9 +50,9 @@ export const createAssetsRouter = (db: SqliteDatabase, config: AppConfig) => {
     });
   });
 
-  router.get("/:assetId", (req, res) => {
+  router.get("/:assetId", async (req, res) => {
     const { assetId } = req.params;
-    const asset = getAssetById(db, assetId);
+    const asset = await getAssetById(db, assetId);
     if (!asset) {
       return res.status(404).json({ error: "Asset not found" });
     }
@@ -61,19 +62,19 @@ export const createAssetsRouter = (db: SqliteDatabase, config: AppConfig) => {
     });
   });
 
-  router.patch("/:assetId", (req, res) => {
+  router.patch("/:assetId", async (req, res) => {
     const { assetId } = req.params;
     const parsed = updateAssetSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten() });
     }
 
-    const asset = getAssetById(db, assetId);
+    const asset = await getAssetById(db, assetId);
     if (!asset) {
       return res.status(404).json({ error: "Asset not found" });
     }
 
-    const updatedAsset = updateAsset(db, assetId, parsed.data);
+    const updatedAsset = await updateAsset(db, assetId, parsed.data);
     if (!updatedAsset) {
       return res.status(500).json({ error: "Failed to update asset" });
     }
@@ -84,14 +85,14 @@ export const createAssetsRouter = (db: SqliteDatabase, config: AppConfig) => {
     });
   });
 
-  router.delete("/:assetId", (req, res) => {
+  router.delete("/:assetId", async (req, res) => {
     const { assetId } = req.params;
-    const asset = getAssetById(db, assetId);
+    const asset = await getAssetById(db, assetId);
     if (!asset) {
       return res.status(404).json({ error: "Asset not found" });
     }
 
-    deleteAsset(db, config, assetId);
+    await deleteAsset(db, config, assetId);
     res.status(204).send();
   });
 

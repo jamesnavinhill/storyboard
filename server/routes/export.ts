@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import { exportProject } from "../utils/projectExport";
 import { importProject } from "../utils/projectImport";
@@ -14,7 +14,7 @@ const upload = multer({
 });
 
 export const createExportRouter = (
-  db: SqliteDatabase,
+  db: UnifiedDatabase,
   config: AppConfig
 ): express.Router => {
   const router = express.Router();
@@ -33,9 +33,10 @@ export const createExportRouter = (
       }
 
       // Get project name for filename
-      const projectRow = db
-        .prepare("SELECT name FROM projects WHERE id = ?")
-        .get(projectId) as { name: string } | undefined;
+      const projectRow = await db.queryOne<{ name: string }>(
+        "SELECT name FROM projects WHERE id = ?",
+        [projectId]
+      );
 
       if (!projectRow) {
         res.status(404).json({ error: "Project not found" });

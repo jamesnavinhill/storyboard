@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import type { UploadedFile, FilePurpose } from "../types";
 import { GoogleGenAI } from "@google/genai";
@@ -14,6 +14,7 @@ import {
   deleteUploadedFile,
   deleteUploadedFilesByProject,
 } from "../stores/uploadedFilesStore";
+import { getStorageService } from "./storageService";
 
 const TWENTY_MB = 20 * 1024 * 1024;
 
@@ -184,28 +185,24 @@ const sanitizeFileName = (fileName: string): string => {
 };
 
 /**
- * Persists a file to the project directory structure
- * Files are stored under data/assets/<projectId>/uploads/
+ * Persists a file to storage using the abstract storage service
+ * Files are stored using LocalStorageService (local dev) or VercelBlobStorageService (Vercel)
  */
-const persistFileToStorage = (
-  config: AppConfig,
+const persistFileToStorage = async (
   projectId: string,
   sourcePath: string,
   fileName: string
-): string => {
-  const uploadsDir = path.join(config.dataDir, "assets", projectId, "uploads");
-  fs.mkdirSync(uploadsDir, { recursive: true });
-
-  const targetPath = path.join(uploadsDir, fileName);
-
-  // Copy file to persistent storage
-  fs.copyFileSync(sourcePath, targetPath);
-
-  return targetPath;
+): Promise<{ storedPath: string; publicUrl: string }> => {
+  const storageService = await getStorageService();
+  const result = await storageService.persistFile(projectId, sourcePath, fileName);
+  return {
+    storedPath: result.storedPath,
+    publicUrl: result.publicUrl,
+  };
 };
 
 export interface UploadFileOptions {
-  db: SqliteDatabase;
+  db: UnifiedDatabase;
   config: AppConfig;
   projectId: string;
   purpose: FilePurpose;
@@ -261,19 +258,18 @@ export const uploadFile = async (
     inlineData = encodeFileAsBase64(file.path);
   }
 
-  // Persist file to project directory structure
-  const persistedPath = persistFileToStorage(
-    config,
+  // Persist file to storage (local or Vercel Blob based on environment)
+  const { storedPath: persistedPath } = await persistFileToStorage(
     projectId,
     file.path,
     sanitizedName
   );
 
-  // Generate thumbnail
-  const thumbnail = await generateThumbnail(persistedPath, file.mimetype);
+  // Generate thumbnail (from original file path since storedPath may be a URL on Vercel)
+  const thumbnail = await generateThumbnail(file.path, file.mimetype);
 
   // Store file metadata in database
-  const uploadedFile = createUploadedFile(db, {
+  const uploadedFile = await createUploadedFile(db, {
     id: randomUUID(),
     projectId,
     name: sanitizedName,
@@ -291,21 +287,21 @@ export const uploadFile = async (
 /**
  * Retrieves all uploaded files for a project
  */
-export const getProjectFiles = (
-  db: SqliteDatabase,
+export const getProjectFiles = async (
+  db: UnifiedDatabase,
   projectId: string
-): UploadedFile[] => {
-  return getUploadedFilesByProject(db, projectId);
+): Promise<UploadedFile[]> => {
+  return await getUploadedFilesByProject(db, projectId);
 };
 
 /**
  * Retrieves a single uploaded file by ID
  */
-export const getFileById = (
-  db: SqliteDatabase,
+export const getFileById = async (
+  db: UnifiedDatabase,
   fileId: string
-): UploadedFile | null => {
-  return getUploadedFileById(db, fileId);
+): Promise<UploadedFile | null> => {
+  return await getUploadedFileById(db, fileId);
 };
 
 /**
@@ -327,13 +323,14 @@ export const validateFilePurpose = (
 /**
  * Verifies that a user owns a project (for authorization checks)
  */
-export const verifyProjectOwnership = (
-  db: SqliteDatabase,
+export const verifyProjectOwnership = async (
+  db: UnifiedDatabase,
   projectId: string
-): boolean => {
-  const row = db
-    .prepare(`SELECT id FROM projects WHERE id = ?`)
-    .get(projectId) as { id: string } | undefined;
+): Promise<boolean> => {
+  const row = await db.queryOne<{ id: string }>(
+    `SELECT id FROM projects WHERE id = ?`,
+    [projectId]
+  );
 
   return row !== undefined;
 };
@@ -366,12 +363,12 @@ const deleteFromFilesApi = async (uri: string): Promise<void> => {
  * Deletes an uploaded file and cleans up Files API resources
  */
 export const deleteFile = async (
-  db: SqliteDatabase,
+  db: UnifiedDatabase,
   fileId: string,
   projectId: string
 ): Promise<void> => {
   // Verify project ownership
-  if (!verifyProjectOwnership(db, projectId)) {
+  if (!(await verifyProjectOwnership(db, projectId))) {
     throw Object.assign(new Error("Project not found"), {
       statusCode: 404,
       errorCode: "PROJECT_NOT_FOUND",
@@ -380,7 +377,7 @@ export const deleteFile = async (
   }
 
   // Get file details
-  const file = getFileById(db, fileId);
+  const file = await getFileById(db, fileId);
   if (!file) {
     throw Object.assign(new Error("File not found"), {
       statusCode: 404,
@@ -404,20 +401,20 @@ export const deleteFile = async (
   }
 
   // Delete from database
-  deleteUploadedFile(db, fileId);
+  await deleteUploadedFile(db, fileId);
 };
 
 /**
  * Updates file metadata (e.g., purpose)
  */
-export const updateFilePurpose = (
-  db: SqliteDatabase,
+export const updateFilePurpose = async (
+  db: UnifiedDatabase,
   fileId: string,
   projectId: string,
   purpose: FilePurpose
-): UploadedFile => {
+): Promise<UploadedFile> => {
   // Verify project ownership
-  if (!verifyProjectOwnership(db, projectId)) {
+  if (!(await verifyProjectOwnership(db, projectId))) {
     throw Object.assign(new Error("Project not found"), {
       statusCode: 404,
       errorCode: "PROJECT_NOT_FOUND",
@@ -426,7 +423,7 @@ export const updateFilePurpose = (
   }
 
   // Get file details
-  const file = getFileById(db, fileId);
+  const file = await getFileById(db, fileId);
   if (!file) {
     throw Object.assign(new Error("File not found"), {
       statusCode: 404,
@@ -445,10 +442,10 @@ export const updateFilePurpose = (
   }
 
   // Update purpose
-  updateUploadedFilePurpose(db, fileId, purpose);
+  await updateUploadedFilePurpose(db, fileId, purpose);
 
   // Return updated file
-  const updatedFile = getFileById(db, fileId);
+  const updatedFile = await getFileById(db, fileId);
   if (!updatedFile) {
     throw new Error("Failed to retrieve updated file");
   }
@@ -461,12 +458,12 @@ export const updateFilePurpose = (
  * Called when a project is deleted
  */
 export const cleanupProjectFiles = async (
-  db: SqliteDatabase,
-  config: AppConfig,
+  db: UnifiedDatabase,
+  _config: AppConfig,
   projectId: string
 ): Promise<void> => {
   // Get all files for the project
-  const files = getProjectFiles(db, projectId);
+  const files = await getProjectFiles(db, projectId);
 
   // Clean up Files API resources
   for (const file of files) {
@@ -476,15 +473,9 @@ export const cleanupProjectFiles = async (
   }
 
   // Delete file records from database
-  deleteUploadedFilesByProject(db, projectId);
+  await deleteUploadedFilesByProject(db, projectId);
 
-  // Delete physical files from storage
-  const uploadsDir = path.join(config.dataDir, "assets", projectId, "uploads");
-  if (fs.existsSync(uploadsDir)) {
-    try {
-      fs.rmSync(uploadsDir, { recursive: true, force: true });
-    } catch (error) {
-      console.error(`Failed to delete uploads directory: ${uploadsDir}`, error);
-    }
-  }
+  // Delete physical files from storage using abstract storage service
+  const storageService = await getStorageService();
+  await storageService.deleteProjectFiles(projectId);
 };

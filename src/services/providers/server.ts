@@ -12,6 +12,7 @@ import type {
 } from "../../types/services";
 import { sceneEntitySchema } from "../projectService";
 import type { SceneRecord } from "../../types/services";
+import { getGeminiApiKey } from "../../stores/apiKeyStore";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -71,12 +72,21 @@ const jsonRequest = async <Schema extends z.ZodTypeAny>(
   options: RequestInit,
   schema: Schema
 ): Promise<z.infer<Schema>> => {
+  // Build headers with optional Authorization
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> ?? {}),
+  };
+
+  // Add Authorization header if user has provided an API key
+  const apiKey = getGeminiApiKey();
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
+    headers,
     credentials: "include",
   });
 
@@ -314,19 +324,19 @@ export const serverMediaGenerator: MediaGenerator = {
     // Convert reference images to base64 if provided
     const referenceImages = request.referenceImages
       ? await Promise.all(
-          request.referenceImages.map(async (file) => ({
-            data: await fileToBase64(file),
-            mimeType: file.type,
-          }))
-        )
+        request.referenceImages.map(async (file) => ({
+          data: await fileToBase64(file),
+          mimeType: file.type,
+        }))
+      )
       : undefined;
 
     // Convert last frame to base64 if provided
     const lastFrame = request.lastFrame
       ? {
-          data: await fileToBase64(request.lastFrame),
-          mimeType: request.lastFrame.type,
-        }
+        data: await fileToBase64(request.lastFrame),
+        mimeType: request.lastFrame.type,
+      }
       : undefined;
 
     const result = await jsonRequest(

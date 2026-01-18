@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import { createAsset } from "../stores/assetStore";
-import { updateScene } from "../stores/projectStore";
+import { updateScene } from "../stores/sceneStore";
 import type { Asset } from "../types";
 
 const MIME_EXTENSION_MAP: Record<string, string> = {
@@ -46,7 +46,7 @@ export const extensionFromMime = (
 };
 
 export interface PersistAssetOptions {
-  db: SqliteDatabase;
+  db: UnifiedDatabase;
   config: AppConfig;
   projectId: string;
   sceneId?: string;
@@ -62,9 +62,9 @@ export interface PersistAssetResult {
   filePath: string;
 }
 
-export const persistAssetBuffer = (
+export const persistAssetBuffer = async (
   options: PersistAssetOptions
-): PersistAssetResult => {
+): Promise<PersistAssetResult> => {
   const {
     db,
     config,
@@ -90,7 +90,7 @@ export const persistAssetBuffer = (
   const filePath = path.join(projectDir, finalName);
   fs.writeFileSync(filePath, buffer);
 
-  const asset = createAsset(db, {
+  const asset = await createAsset(db, {
     projectId,
     sceneId,
     type,
@@ -104,10 +104,10 @@ export const persistAssetBuffer = (
 
   if (sceneId) {
     if (type === "image") {
-      updateScene(db, projectId, sceneId, { primaryImageAssetId: asset.id });
+      await updateScene(db, projectId, sceneId, { primaryImageAssetId: asset.id });
     }
     if (type === "video") {
-      updateScene(db, projectId, sceneId, { primaryVideoAssetId: asset.id });
+      await updateScene(db, projectId, sceneId, { primaryVideoAssetId: asset.id });
     }
   }
 

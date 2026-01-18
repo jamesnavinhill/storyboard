@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase, DatabaseRow } from "../database";
 
 export interface DocumentContent {
   title: string;
@@ -43,33 +43,48 @@ export interface ProjectDocument {
   updatedAt: string;
 }
 
+interface DocumentRow extends DatabaseRow {
+  id: string;
+  project_id: string;
+  version: number;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface VersionRow extends DatabaseRow {
+  max_version: number | null;
+}
+
 const MAX_VERSIONS = 10;
+
+/**
+ * Map database row to ProjectDocument
+ */
+const mapDocumentRow = (row: DocumentRow): ProjectDocument => ({
+  id: row.id,
+  projectId: row.project_id,
+  version: row.version,
+  content: JSON.parse(row.content) as DocumentContent,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
 
 /**
  * Get the latest document for a project
  */
-export const getDocument = (
-  db: SqliteDatabase,
+export const getDocument = async (
+  db: UnifiedDatabase,
   projectId: string
-): ProjectDocument | null => {
-  const row = db
-    .prepare(
-      `SELECT id, project_id, version, content, created_at, updated_at
-       FROM project_documents
-       WHERE project_id = ?
-       ORDER BY version DESC
-       LIMIT 1`
-    )
-    .get(projectId) as
-    | {
-        id: string;
-        project_id: string;
-        version: number;
-        content: string;
-        created_at: string;
-        updated_at: string;
-      }
-    | undefined;
+): Promise<ProjectDocument | null> => {
+  const row = await db.queryOne<DocumentRow>(
+    `SELECT id, project_id, version, content, created_at, updated_at
+     FROM project_documents
+     WHERE project_id = ?
+     ORDER BY version DESC
+     LIMIT 1`,
+    [projectId]
+  );
 
   if (!row) {
     return null;
@@ -82,32 +97,32 @@ export const getDocument = (
  * Save a new version of a document
  * Automatically increments version and prunes old versions
  */
-export const saveDocument = (
-  db: SqliteDatabase,
+export const saveDocument = async (
+  db: UnifiedDatabase,
   projectId: string,
   content: DocumentContent
-): ProjectDocument => {
+): Promise<ProjectDocument> => {
   // Get the current max version
-  const versionRow = db
-    .prepare(
-      `SELECT MAX(version) as max_version
-       FROM project_documents
-       WHERE project_id = ?`
-    )
-    .get(projectId) as { max_version: number | null } | undefined;
+  const versionRow = await db.queryOne<VersionRow>(
+    `SELECT MAX(version) as max_version
+     FROM project_documents
+     WHERE project_id = ?`,
+    [projectId]
+  );
 
   const nextVersion = (versionRow?.max_version ?? 0) + 1;
   const id = randomUUID();
   const contentJson = JSON.stringify(content);
 
   // Insert new version
-  db.prepare(
+  await db.execute(
     `INSERT INTO project_documents (id, project_id, version, content)
-     VALUES (?, ?, ?, ?)`
-  ).run(id, projectId, nextVersion, contentJson);
+     VALUES (?, ?, ?, ?)`,
+    [id, projectId, nextVersion, contentJson]
+  );
 
   // Prune old versions (keep last MAX_VERSIONS)
-  db.prepare(
+  await db.execute(
     `DELETE FROM project_documents
      WHERE project_id = ?
      AND version NOT IN (
@@ -115,24 +130,21 @@ export const saveDocument = (
        WHERE project_id = ?
        ORDER BY version DESC
        LIMIT ?
-     )`
-  ).run(projectId, projectId, MAX_VERSIONS);
+     )`,
+    [projectId, projectId, MAX_VERSIONS]
+  );
 
   // Return the newly created document
-  const newDoc = db
-    .prepare(
-      `SELECT id, project_id, version, content, created_at, updated_at
-       FROM project_documents
-       WHERE id = ?`
-    )
-    .get(id) as {
-    id: string;
-    project_id: string;
-    version: number;
-    content: string;
-    created_at: string;
-    updated_at: string;
-  };
+  const newDoc = await db.queryOne<DocumentRow>(
+    `SELECT id, project_id, version, content, created_at, updated_at
+     FROM project_documents
+     WHERE id = ?`,
+    [id]
+  );
+
+  if (!newDoc) {
+    throw new Error("Failed to create document");
+  }
 
   return mapDocumentRow(newDoc);
 };
@@ -140,55 +152,37 @@ export const saveDocument = (
 /**
  * Get document history (all versions)
  */
-export const getDocumentHistory = (
-  db: SqliteDatabase,
+export const getDocumentHistory = async (
+  db: UnifiedDatabase,
   projectId: string,
   limit: number = MAX_VERSIONS
-): ProjectDocument[] => {
-  const rows = db
-    .prepare(
-      `SELECT id, project_id, version, content, created_at, updated_at
-       FROM project_documents
-       WHERE project_id = ?
-       ORDER BY version DESC
-       LIMIT ?`
-    )
-    .all(projectId, limit) as Array<{
-    id: string;
-    project_id: string;
-    version: number;
-    content: string;
-    created_at: string;
-    updated_at: string;
-  }>;
+): Promise<ProjectDocument[]> => {
+  const result = await db.query<DocumentRow>(
+    `SELECT id, project_id, version, content, created_at, updated_at
+     FROM project_documents
+     WHERE project_id = ?
+     ORDER BY version DESC
+     LIMIT ?`,
+    [projectId, limit]
+  );
 
-  return rows.map(mapDocumentRow);
+  return result.rows.map(mapDocumentRow);
 };
 
 /**
  * Get a specific version of a document
  */
-export const getDocumentVersion = (
-  db: SqliteDatabase,
+export const getDocumentVersion = async (
+  db: UnifiedDatabase,
   projectId: string,
   version: number
-): ProjectDocument | null => {
-  const row = db
-    .prepare(
-      `SELECT id, project_id, version, content, created_at, updated_at
-       FROM project_documents
-       WHERE project_id = ? AND version = ?`
-    )
-    .get(projectId, version) as
-    | {
-        id: string;
-        project_id: string;
-        version: number;
-        content: string;
-        created_at: string;
-        updated_at: string;
-      }
-    | undefined;
+): Promise<ProjectDocument | null> => {
+  const row = await db.queryOne<DocumentRow>(
+    `SELECT id, project_id, version, content, created_at, updated_at
+     FROM project_documents
+     WHERE project_id = ? AND version = ?`,
+    [projectId, version]
+  );
 
   if (!row) {
     return null;
@@ -200,12 +194,12 @@ export const getDocumentVersion = (
 /**
  * Restore a previous version by creating a new version with the old content
  */
-export const restoreDocumentVersion = (
-  db: SqliteDatabase,
+export const restoreDocumentVersion = async (
+  db: UnifiedDatabase,
   projectId: string,
   version: number
-): ProjectDocument | null => {
-  const oldVersion = getDocumentVersion(db, projectId, version);
+): Promise<ProjectDocument | null> => {
+  const oldVersion = await getDocumentVersion(db, projectId, version);
   if (!oldVersion) {
     return null;
   }
@@ -213,22 +207,3 @@ export const restoreDocumentVersion = (
   // Create a new version with the old content
   return saveDocument(db, projectId, oldVersion.content);
 };
-
-/**
- * Map database row to ProjectDocument
- */
-const mapDocumentRow = (row: {
-  id: string;
-  project_id: string;
-  version: number;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}): ProjectDocument => ({
-  id: row.id,
-  projectId: row.project_id,
-  version: row.version,
-  content: JSON.parse(row.content) as DocumentContent,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});

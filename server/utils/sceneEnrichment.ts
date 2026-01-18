@@ -1,23 +1,25 @@
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import { getAssetsByIds } from "../stores/assetStore";
-import { updateScene } from "../stores/projectStore";
+import { updateScene } from "../stores/sceneStore";
 import type { Scene, ChatMessage, Asset } from "../types";
 import { assetFileExists, getAssetPublicUrl } from "./assetHelpers";
 
-export const enrichScenesWithAssets = (
-  db: SqliteDatabase,
+export const enrichScenesWithAssets = async (
+  db: UnifiedDatabase,
   scenes: Scene[]
-): Array<
-  Scene & {
-    primaryImageAssetId: string | null;
-    primaryVideoAssetId: string | null;
-    imageUrl: string | null;
-    videoUrl: string | null;
-    imageStatus: "ready" | "missing" | "absent";
-    videoStatus: "ready" | "missing" | "absent";
-    imageAsset: Asset | null;
-    videoAsset: Asset | null;
-  }
+): Promise<
+  Array<
+    Scene & {
+      primaryImageAssetId: string | null;
+      primaryVideoAssetId: string | null;
+      imageUrl: string | null;
+      videoUrl: string | null;
+      imageStatus: "ready" | "missing" | "absent";
+      videoStatus: "ready" | "missing" | "absent";
+      imageAsset: Asset | null;
+      videoAsset: Asset | null;
+    }
+  >
 > => {
   if (scenes.length === 0) {
     return [];
@@ -33,7 +35,7 @@ export const enrichScenesWithAssets = (
         .filter((value): value is string => Boolean(value))
     )
   );
-  const assets = assetIds.length > 0 ? getAssetsByIds(db, assetIds) : [];
+  const assets = assetIds.length > 0 ? await getAssetsByIds(db, assetIds) : [];
   const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 
   const missingImageScenes = new Set<string>();
@@ -93,7 +95,7 @@ export const enrichScenesWithAssets = (
     for (const sceneId of missingImageScenes) {
       const scene = scenes.find((candidate) => candidate.id === sceneId);
       if (!scene) continue;
-      updateScene(db, scene.projectId, scene.id, { primaryImageAssetId: null });
+      await updateScene(db, scene.projectId, scene.id, { primaryImageAssetId: null });
       console.warn(
         `Pruned missing image asset reference for scene ${scene.id}`
       );
@@ -104,7 +106,7 @@ export const enrichScenesWithAssets = (
     for (const sceneId of missingVideoScenes) {
       const scene = scenes.find((candidate) => candidate.id === sceneId);
       if (!scene) continue;
-      updateScene(db, scene.projectId, scene.id, { primaryVideoAssetId: null });
+      await updateScene(db, scene.projectId, scene.id, { primaryVideoAssetId: null });
       console.warn(
         `Pruned missing video asset reference for scene ${scene.id}`
       );
@@ -114,18 +116,18 @@ export const enrichScenesWithAssets = (
   return enriched;
 };
 
-export const enrichSceneWithAssets = (
-  db: SqliteDatabase,
+export const enrichSceneWithAssets = async (
+  db: UnifiedDatabase,
   scene: Scene
-): ReturnType<typeof enrichScenesWithAssets>[number] => {
-  const [enriched] = enrichScenesWithAssets(db, [scene]);
+): Promise<Awaited<ReturnType<typeof enrichScenesWithAssets>>[number]> => {
+  const [enriched] = await enrichScenesWithAssets(db, [scene]);
   return enriched;
 };
 
-export const enrichChatMessagesWithAssets = (
-  db: SqliteDatabase,
+export const enrichChatMessagesWithAssets = async (
+  db: UnifiedDatabase,
   messages: ChatMessage[]
-): Array<ChatMessage & { imageUrl: string | null }> => {
+): Promise<Array<ChatMessage & { imageUrl: string | null }>> => {
   if (messages.length === 0) {
     return [];
   }
@@ -136,7 +138,7 @@ export const enrichChatMessagesWithAssets = (
         .filter((id): id is string => Boolean(id))
     )
   );
-  const assets = assetIds.length > 0 ? getAssetsByIds(db, assetIds) : [];
+  const assets = assetIds.length > 0 ? await getAssetsByIds(db, assetIds) : [];
   const assetMap = new Map(assets.map((asset) => [asset.id, asset]));
 
   return messages.map((message) => {

@@ -1,22 +1,22 @@
 import { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import {
   createStyleTemplateSchema,
   updateStyleTemplateSchema,
 } from "../validation";
 import * as templateStore from "../stores/templateStore";
 
-export const createTemplatesRouter = (db: SqliteDatabase) => {
+export const createTemplatesRouter = (db: UnifiedDatabase) => {
   const router = Router();
 
   // GET /api/templates - List all style templates with optional filters
-  router.get("/", (req: Request, res: Response) => {
+  router.get("/", async (req: Request, res: Response) => {
     try {
       const category = req.query.category as string | undefined;
       const search = req.query.search as string | undefined;
 
-      const templates = templateStore.listStyleTemplates(db, { category, search });
+      const templates = await templateStore.listStyleTemplates(db, { category, search });
       res.json({ templates });
     } catch (error) {
       console.error("[templates:list:error]", error);
@@ -28,10 +28,10 @@ export const createTemplatesRouter = (db: SqliteDatabase) => {
   });
 
   // POST /api/templates - Create a new style template
-  router.post("/", (req: Request, res: Response) => {
+  router.post("/", async (req: Request, res: Response) => {
     try {
       const data = createStyleTemplateSchema.parse(req.body);
-      const template = templateStore.createStyleTemplate(db, data);
+      const template = await templateStore.createStyleTemplate(db, data);
       res.status(201).json({ template });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -51,10 +51,10 @@ export const createTemplatesRouter = (db: SqliteDatabase) => {
   });
 
   // GET /api/templates/:id - Get a specific style template
-  router.get("/:id", (req: Request, res: Response) => {
+  router.get("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const template = templateStore.getStyleTemplateById(db, id);
+      const template = await templateStore.getStyleTemplateById(db, id);
 
       if (!template) {
         res.status(404).json({
@@ -75,11 +75,11 @@ export const createTemplatesRouter = (db: SqliteDatabase) => {
   });
 
   // PUT /api/templates/:id - Update a style template
-  router.put("/:id", (req: Request, res: Response) => {
+  router.put("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const data = updateStyleTemplateSchema.parse(req.body);
-      const template = templateStore.updateStyleTemplate(db, id, data);
+      const template = await templateStore.updateStyleTemplate(db, id, data);
 
       if (!template) {
         res.status(404).json({
@@ -108,10 +108,10 @@ export const createTemplatesRouter = (db: SqliteDatabase) => {
   });
 
   // DELETE /api/templates/:id - Delete a style template
-  router.delete("/:id", (req: Request, res: Response) => {
+  router.delete("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const deleted = templateStore.deleteStyleTemplate(db, id);
+      const deleted = await templateStore.deleteStyleTemplate(db, id);
 
       if (!deleted) {
         res.status(404).json({

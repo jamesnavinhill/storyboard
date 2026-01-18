@@ -2,20 +2,18 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import type { AppConfig } from "../config";
 import type { ExportManifest } from "./projectExport";
 import {
   createProject,
   listProjects,
-  createScenes,
-  appendChatMessage,
   upsertSettings,
-  createSceneGroup,
-  createSceneTag,
-  addScenesToGroup,
-  assignTagsToScene,
 } from "../stores/projectStore";
+import { createScenes } from "../stores/sceneStore";
+import { appendChatMessage } from "../stores/chatStore";
+import { createSceneGroup, addScenesToGroup } from "../stores/groupStore";
+import { createSceneTag, assignTagsToScene } from "../stores/tagStore";
 import { createAsset } from "../stores/assetStore";
 
 interface ImportResult {
@@ -32,7 +30,7 @@ interface ImportResult {
  * Returns a summary of the imported project.
  */
 export const importProject = async (
-  db: SqliteDatabase,
+  db: UnifiedDatabase,
   config: AppConfig,
   zipBuffer: Buffer
 ): Promise<ImportResult> => {
@@ -56,7 +54,7 @@ export const importProject = async (
   }
 
   // Resolve name conflicts
-  const existingProjects = listProjects(db);
+  const existingProjects = await listProjects(db);
   const existingNames = new Set(
     existingProjects.map((p) => p.name.toLowerCase())
   );
@@ -97,7 +95,7 @@ export const importProject = async (
   }
 
   // Create project
-  const project = createProject(db, {
+  const project = await createProject(db, {
     name: projectName,
     description: manifest.project.description ?? undefined,
   });
@@ -129,7 +127,7 @@ export const importProject = async (
     fs.writeFileSync(newAssetPath, assetBuffer);
 
     // Create asset record
-    createAsset(db, {
+    await createAsset(db, {
       projectId: project.id,
       sceneId: asset.sceneId ? sceneIdMap.get(asset.sceneId) : undefined,
       type: asset.type,
@@ -144,12 +142,12 @@ export const importProject = async (
 
   // Import groups
   for (const group of manifest.groups) {
-    createSceneGroup(db, project.id, group.name, group.color ?? undefined);
+    await createSceneGroup(db, project.id, group.name, group.color ?? undefined);
   }
 
   // Import tags
   for (const tag of manifest.tags) {
-    createSceneTag(db, project.id, tag.name, tag.color ?? undefined);
+    await createSceneTag(db, project.id, tag.name, tag.color ?? undefined);
   }
 
   // Import scenes
@@ -159,7 +157,7 @@ export const importProject = async (
     orderIndex: scene.orderIndex,
   }));
 
-  const createdScenes = createScenes(db, project.id, sceneInputs);
+  const createdScenes = await createScenes(db, project.id, sceneInputs);
 
   // Update scene asset references
   for (let i = 0; i < manifest.scenes.length; i++) {
@@ -168,29 +166,28 @@ export const importProject = async (
 
     if (oldScene.primaryImageAssetId || oldScene.primaryVideoAssetId) {
       const updateFields: string[] = [];
-      const params: Record<string, unknown> = { sceneId: newScene.id };
+      const params: unknown[] = [];
 
       if (oldScene.primaryImageAssetId) {
         const newImageAssetId = assetIdMap.get(oldScene.primaryImageAssetId);
         if (newImageAssetId) {
-          updateFields.push("primary_image_asset_id = @primaryImageAssetId");
-          params.primaryImageAssetId = newImageAssetId;
+          updateFields.push("primary_image_asset_id = ?");
+          params.push(newImageAssetId);
         }
       }
 
       if (oldScene.primaryVideoAssetId) {
         const newVideoAssetId = assetIdMap.get(oldScene.primaryVideoAssetId);
         if (newVideoAssetId) {
-          updateFields.push("primary_video_asset_id = @primaryVideoAssetId");
-          params.primaryVideoAssetId = newVideoAssetId;
+          updateFields.push("primary_video_asset_id = ?");
+          params.push(newVideoAssetId);
         }
       }
 
       if (updateFields.length > 0) {
-        const sql = `UPDATE scenes SET ${updateFields.join(
-          ", "
-        )} WHERE id = @sceneId`;
-        db.prepare(sql).run(params);
+        params.push(newScene.id);
+        const sql = `UPDATE scenes SET ${updateFields.join(", ")} WHERE id = ?`;
+        await db.execute(sql, params);
       }
     }
 
@@ -198,7 +195,7 @@ export const importProject = async (
     if (oldScene.groupId) {
       const newGroupId = groupIdMap.get(oldScene.groupId);
       if (newGroupId) {
-        addScenesToGroup(db, newGroupId, [newScene.id]);
+        await addScenesToGroup(db, newGroupId, [newScene.id]);
       }
     }
 
@@ -208,7 +205,7 @@ export const importProject = async (
         .map((oldTagId) => tagIdMap.get(oldTagId))
         .filter((id): id is string => id !== undefined);
       if (newTagIds.length > 0) {
-        assignTagsToScene(db, newScene.id, newTagIds);
+        await assignTagsToScene(db, newScene.id, newTagIds);
       }
     }
   }
@@ -222,7 +219,7 @@ export const importProject = async (
       ? assetIdMap.get(message.imageAssetId)
       : undefined;
 
-    appendChatMessage(db, project.id, {
+    await appendChatMessage(db, project.id, {
       role: message.role,
       text: message.text,
       sceneId: newSceneId,
@@ -232,7 +229,7 @@ export const importProject = async (
 
   // Import settings
   if (manifest.settings) {
-    upsertSettings(db, project.id, manifest.settings);
+    await upsertSettings(db, project.id, manifest.settings);
   }
 
   return {

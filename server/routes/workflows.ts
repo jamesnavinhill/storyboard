@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { ZodError } from "zod";
-import type { Database as SqliteDatabase } from "better-sqlite3";
+import type { UnifiedDatabase } from "../database";
 import {
   createWorkflowSchema,
   updateWorkflowSchema,
@@ -9,16 +9,16 @@ import {
 } from "../validation";
 import * as workflowStore from "../stores/workflowStore";
 
-export const createWorkflowsRouter = (db: SqliteDatabase) => {
+export const createWorkflowsRouter = (db: UnifiedDatabase) => {
   const router = Router();
 
   // GET /api/workflows - List all workflows with optional filters
-  router.get("/", (req: Request, res: Response) => {
+  router.get("/", async (req: Request, res: Response) => {
     try {
       const category = req.query.category as string | undefined;
       const search = req.query.search as string | undefined;
 
-      const workflows = workflowStore.listWorkflows(db, { category, search });
+      const workflows = await workflowStore.listWorkflows(db, { category, search });
       res.json({ workflows });
     } catch (error) {
       console.error("[workflows:list:error]", error);
@@ -30,10 +30,10 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
   });
 
   // POST /api/workflows - Create a new workflow
-  router.post("/", (req: Request, res: Response) => {
+  router.post("/", async (req: Request, res: Response) => {
     try {
       const data = createWorkflowSchema.parse(req.body);
-      const workflow = workflowStore.createWorkflow(db, data);
+      const workflow = await workflowStore.createWorkflow(db, data);
       res.status(201).json({ workflow });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -53,10 +53,10 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
   });
 
   // GET /api/workflows/:id - Get a specific workflow
-  router.get("/:id", (req: Request, res: Response) => {
+  router.get("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const workflow = workflowStore.getWorkflowById(db, id);
+      const workflow = await workflowStore.getWorkflowById(db, id);
 
       if (!workflow) {
         res.status(404).json({
@@ -77,11 +77,11 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
   });
 
   // PUT /api/workflows/:id - Update a workflow
-  router.put("/:id", (req: Request, res: Response) => {
+  router.put("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const data = updateWorkflowSchema.parse(req.body);
-      const workflow = workflowStore.updateWorkflow(db, id, data);
+      const workflow = await workflowStore.updateWorkflow(db, id, data);
 
       if (!workflow) {
         res.status(404).json({
@@ -110,10 +110,10 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
   });
 
   // DELETE /api/workflows/:id - Delete a workflow (cascade deletes subtypes)
-  router.delete("/:id", (req: Request, res: Response) => {
+  router.delete("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const deleted = workflowStore.deleteWorkflow(db, id);
+      const deleted = await workflowStore.deleteWorkflow(db, id);
 
       if (!deleted) {
         res.status(404).json({
@@ -134,12 +134,12 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
   });
 
   // GET /api/workflows/:id/subtypes - List subtypes for a workflow
-  router.get("/:id/subtypes", (req: Request, res: Response) => {
+  router.get("/:id/subtypes", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
       // Verify workflow exists
-      const workflow = workflowStore.getWorkflowById(db, id);
+      const workflow = await workflowStore.getWorkflowById(db, id);
       if (!workflow) {
         res.status(404).json({
           error: "Workflow not found",
@@ -148,7 +148,7 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
         return;
       }
 
-      const subtypes = workflowStore.listWorkflowSubtypes(db, id);
+      const subtypes = await workflowStore.listWorkflowSubtypes(db, id);
       res.json({ subtypes });
     } catch (error) {
       console.error("[workflows:subtypes:list:error]", error);
@@ -160,12 +160,12 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
   });
 
   // POST /api/workflows/:id/subtypes - Create a new subtype
-  router.post("/:id/subtypes", (req: Request, res: Response) => {
+  router.post("/:id/subtypes", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
       // Verify workflow exists
-      const workflow = workflowStore.getWorkflowById(db, id);
+      const workflow = await workflowStore.getWorkflowById(db, id);
       if (!workflow) {
         res.status(404).json({
           error: "Workflow not found",
@@ -175,7 +175,7 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
       }
 
       const data = createWorkflowSubtypeSchema.parse(req.body);
-      const subtype = workflowStore.createWorkflowSubtype(db, id, data);
+      const subtype = await workflowStore.createWorkflowSubtype(db, id, data);
       res.status(201).json({ subtype });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -198,15 +198,15 @@ export const createWorkflowsRouter = (db: SqliteDatabase) => {
 };
 
 // Subtype routes (not nested under workflows)
-export const createSubtypesRouter = (db: SqliteDatabase) => {
+export const createSubtypesRouter = (db: UnifiedDatabase) => {
   const router = Router();
 
   // PUT /api/subtypes/:id - Update a subtype
-  router.put("/:id", (req: Request, res: Response) => {
+  router.put("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const data = updateWorkflowSubtypeSchema.parse(req.body);
-      const subtype = workflowStore.updateWorkflowSubtype(db, id, data);
+      const subtype = await workflowStore.updateWorkflowSubtype(db, id, data);
 
       if (!subtype) {
         res.status(404).json({
@@ -235,10 +235,10 @@ export const createSubtypesRouter = (db: SqliteDatabase) => {
   });
 
   // DELETE /api/subtypes/:id - Delete a subtype
-  router.delete("/:id", (req: Request, res: Response) => {
+  router.delete("/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const deleted = workflowStore.deleteWorkflowSubtype(db, id);
+      const deleted = await workflowStore.deleteWorkflowSubtype(db, id);
 
       if (!deleted) {
         res.status(404).json({

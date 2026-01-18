@@ -15,6 +15,7 @@ import {
   getDefaultResolution,
   getModelCapabilities,
 } from "./videoModelCapabilities";
+import { getUserApiKey } from "../utils/requestContext";
 
 class GeminiApiKeyMissingError extends Error {
   public readonly statusCode = 503;
@@ -121,16 +122,74 @@ const parseGoogleApiError = (
 let cachedClient: GoogleGenAI | undefined;
 let cachedApiKey: string | undefined;
 
-const ensureClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
+/**
+ * Get the server's fallback API key from environment
+ */
+const getServerApiKey = (): string | undefined => {
+  return process.env.GEMINI_API_KEY?.trim();
+};
+
+/**
+ * Ensure a Gemini client is available.
+ * Checks for API key in this priority order:
+ * 1. Explicit userApiKey parameter
+ * 2. User API key from request context (from Authorization header)
+ * 3. Server's fallback API key from environment
+ *
+ * @param userApiKey - Optional explicit user-provided API key (highest priority)
+ */
+const ensureClient = (userApiKey?: string): { client: GoogleGenAI; apiKey: string } => {
+  // Check explicit parameter first
+  let keyToUse = userApiKey?.trim();
+
+  // If no explicit key, check request context (from Authorization header)
+  if (!keyToUse) {
+    const contextKey = getUserApiKey();
+    if (contextKey) {
+      keyToUse = contextKey;
+    }
+  }
+
+  // If user provided a key (explicit or from context), create a fresh client
+  if (keyToUse) {
+    return {
+      client: new GoogleGenAI({ apiKey: keyToUse }),
+      apiKey: keyToUse,
+    };
+  }
+
+  // Fall back to server's API key
+  const apiKey = getServerApiKey();
   if (!apiKey) {
     throw new GeminiApiKeyMissingError();
   }
+
+  // Use cached client if key hasn't changed
   if (!cachedClient || cachedApiKey !== apiKey) {
     cachedClient = new GoogleGenAI({ apiKey });
     cachedApiKey = apiKey;
   }
+
   return { client: cachedClient, apiKey };
+};
+
+/**
+ * Create a client with a specific API key (for one-time use with user key)
+ * This is useful when you need to verify a key or create a dedicated client.
+ */
+export const createClientWithKey = (apiKey: string): GoogleGenAI => {
+  const trimmedKey = apiKey.trim();
+  if (!trimmedKey) {
+    throw new Error("API key cannot be empty");
+  }
+  return new GoogleGenAI({ apiKey: trimmedKey });
+};
+
+/**
+ * Check if the server has a fallback API key configured
+ */
+export const hasServerApiKey = (): boolean => {
+  return !!getServerApiKey();
 };
 
 const extractText = (response: GenerateContentResponse): string => {
