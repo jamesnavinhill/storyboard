@@ -103,7 +103,12 @@ export const createWorkflowSlice: StateCreator<
       const cache = new Map<string, Workflow>();
       workflows.forEach((workflow) => cache.set(workflow.id, workflow as unknown as Workflow));
 
-      isWorkflowsLoading: false,
+      set({
+        workflows: workflows as unknown as Workflow[],
+        workflowsCache: cache,
+        lastWorkflowsFetch: now,
+        isWorkflowsLoading: false,
+      });
     }
   },
 
