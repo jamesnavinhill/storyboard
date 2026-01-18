@@ -8,6 +8,8 @@
  * - Fetches templates from backend API
  */
 
+import { DEFAULT_TEMPLATES } from "@/config/defaults";
+
 export interface StyleTemplate {
   id: string;
   name: string;
@@ -28,23 +30,32 @@ export interface StyleTemplate {
  * Fetch all style templates from backend
  */
 export const fetchStyleTemplates = async (): Promise<StyleTemplate[]> => {
-  const response = await fetch("/api/templates");
+  try {
+    const response = await fetch("/api/templates");
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw Object.assign(
-      new Error(error.error || "Failed to fetch style templates"),
-      {
-        statusCode: response.status,
-        requestId: error.requestId,
-        errorCode: error.errorCode,
-        retryable: error.retryable ?? true,
-      }
-    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch templates: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.templates || data.templates.length === 0) {
+      throw new Error("No templates returned");
+    }
+    return data.templates;
+  } catch (error) {
+    console.warn("Failed to fetch style templates, using local defaults:", error);
+
+    // FALLBACK: Use local defaults
+    return DEFAULT_TEMPLATES.map(t => ({
+      id: "default-" + t.name.toLowerCase().replace(/\s+/g, "-"),
+      ...t,
+      thumbnail: undefined,
+      stylePrompt: t.stylePrompt,
+      category: t.category,
+      tested: t.tested,
+      metadata: {},
+    }));
   }
-
-  const data = await response.json();
-  return data.templates || [];
 };
 
 /**

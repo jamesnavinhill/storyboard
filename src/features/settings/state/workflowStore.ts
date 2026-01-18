@@ -3,6 +3,7 @@ import type {
   Workflow,
   WorkflowSubtype,
 } from "../../../types/gemini-enhancement";
+import { DEFAULT_WORKFLOWS } from "@/config/defaults";
 
 // Workflow slice state interface
 export interface WorkflowSlice {
@@ -87,9 +88,27 @@ export const createWorkflowSlice: StateCreator<
         isWorkflowsLoading: false,
       });
     } catch (error) {
-      console.error("Failed to fetch workflows:", error);
-      set({ isWorkflowsLoading: false });
-      throw error;
+      console.warn("Failed to fetch workflows, using local defaults:", error);
+
+      // FALLBACK: Use local defaults
+      const workflows = DEFAULT_WORKFLOWS.map(w => ({
+        id: "default-" + w.category,
+        ...w,
+        examples: null,
+        metadata: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const cache = new Map<string, Workflow>();
+      workflows.forEach((workflow) => cache.set(workflow.id, workflow as unknown as Workflow));
+
+      set({
+        workflows: workflows as unknown as Workflow[],
+        workflowsCache: cache,
+        lastWorkflowsFetch: now,
+        isWorkflowsLoading: false,,
+      });
     }
   },
 
@@ -251,11 +270,11 @@ export const createWorkflowSlice: StateCreator<
         workflows: state.workflows.map((w) =>
           w.id === updatedSubtype.workflowId
             ? {
-                ...w,
-                subtypes: w.subtypes.map((s) =>
-                  s.id === id ? updatedSubtype : s
-                ),
-              }
+              ...w,
+              subtypes: w.subtypes.map((s) =>
+                s.id === id ? updatedSubtype : s
+              ),
+            }
             : w
         ),
       }));
